@@ -1,0 +1,178 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 10/18/2023 02:56:28 AM
+// Design Name: 
+// Module Name: moving_box
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module moving_box(
+input state,
+input clock, 
+input btnC, 
+input btnL, 
+input btnR, 
+output rgb_cs, 
+output rgb_sdin , 
+output rgb_sclk, 
+output rgb_d_cn, 
+output rgb_resn, 
+output rgb_vccen, 
+output rgb_pmoden);
+
+    wire clock_6p25mhz;
+    wire clock_90hz;
+    wire frame_begin;
+    wire sending_pixels;
+    wire sample_pixel;
+    wire [12:0] pixel_index;
+    reg [15:0] oled_data1; //change back to reg
+    reg [12:0] x_axis;
+    reg [12:0] y_axis;
+    reg [1:0] count = 0;
+   
+    reg [1:0] btnc_flag = 0;
+    reg [1:0] btnr_flag = 0;
+    reg [1:0] btnl_flag = 0;
+    
+    reg [12:0] left_edge = 3;
+    reg [1:0] left_flag = 0;
+    reg [12:0] right_edge = 93;
+    reg [1:0] right_flag = 0;
+    reg [12:0] position = 0;
+
+    
+
+    clock_divider d1 (clock, 7 , clock_6p25mhz);
+    clock_divider d2 (clock, 555555, clock_90hz); // remember to change back to 45hz
+
+    
+    initial begin
+        right_flag = 0;
+        left_flag = 0;
+        position = 48;
+    end
+      
+    always @(posedge clock_6p25mhz) begin
+    
+        x_axis = pixel_index % 12'd96;
+        y_axis = pixel_index / 12'd96;
+        
+        if((x_axis >= 2 && x_axis < 7 )
+            && (y_axis >= 2 && y_axis < 7)
+            && (btnc_flag == 0) && (btnr_flag == 0) && (btnl_flag == 0)) begin
+            oled_data1 <= 16'b0000000000011111;
+        end 
+        
+        else if(btnc_flag == 1
+            && (x_axis >= 46  && x_axis < 51)
+            && (y_axis >= 30 && y_axis < 35)) begin
+            oled_data1 <= 16'b0000011111100000;
+        end
+        
+        else if((btnl_flag == 1)
+            && (x_axis >= position && x_axis < (position + 5)) 
+            && (y_axis >= 30 && y_axis < 35)) begin
+            oled_data1 <= 16'b0000011111100000;
+            
+         end
+        
+        else if((btnr_flag == 1)
+            && (x_axis >= position && x_axis < (position + 5)) //point of failure
+            && (y_axis >= 30 && y_axis < 35)) begin
+            oled_data1 <= 16'b0000011111100000;
+
+        end
+        
+        else begin
+            oled_data1 <= 16'd0;
+        end
+        
+    end
+    
+    always @(posedge clock_90hz) begin
+        
+        if (count == 0 && (btnl_flag == 1 || btnr_flag == 1)) begin
+            count <= 1;
+            if (left_flag == 0 && btnl_flag == 1) begin
+                position <= position - 1;
+            end if (right_flag == 0 && btnr_flag == 1) begin
+                position <= position + 1;
+            end
+            
+        end else if (count == 1 && (btnl_flag == 1 || btnr_flag == 1)) begin
+            count <= 0;
+            
+        end else begin
+            count <= 0;
+            position <= 48;
+        end    
+    end    
+
+    always @(posedge clock) begin
+        if (btnC == 1) begin
+            btnc_flag <= 1;
+            btnr_flag <= 0;
+            btnl_flag <= 0;
+            left_flag <= 0;
+            right_flag <= 0;
+        end
+        
+        else if (btnR == 1) begin
+            btnc_flag <= 0;
+            btnr_flag <= 1;
+            btnl_flag <= 0;
+            left_flag <= 0;
+        end
+        
+        else if (btnL == 1) begin
+            btnc_flag <= 0;
+            btnr_flag <= 0;
+            btnl_flag <= 1;
+            right_flag <= 0;
+        end
+        
+        else if (btnl_flag == 1 && position == left_edge) begin
+            left_flag <= 1;
+        end
+        
+        else if (btnr_flag == 1 && position == (right_edge - 5)) begin
+            right_flag <= 1;
+        end
+       
+        else begin
+            
+        end
+    end
+    
+// Oled_Display oled1 (clock_6p25mhz,
+//                       0, 
+//                       frame_begin, 
+//                       sending_pixels,
+//                       sample_pixel, 
+//                       pixel_index, 
+//                       oled_data1, 
+//                       rgb_cs, 
+//                       rgb_sdin, 
+//                       rgb_sclk, 
+//                       rgb_d_cn, 
+//                       rgb_resn, 
+//                       rgb_vccen,
+//                       rgb_pmoden);
+
+    
+endmodule
