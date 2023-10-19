@@ -1,40 +1,13 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 10/18/2023 03:12:57 AM
-// Design Name: 
-// Module Name: group_paint
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
-
 module group_paint( input state,
                     inout PS2Clk, 
                     inout PS2Data,
                     input clock,
                     output rgb_cs, 
-                    output rgb_sdin , 
-                    output rgb_sclk, 
-                    output rgb_d_cn, 
-                    output rgb_resn, 
-                    output rgb_vccen, 
-                    output rgb_pmoden,
-                    output [15:0] led,
-                    output [6:0] seg,
-                    output [3:0] an,
-                    output dp
+                    output [6:0] JB,
+                    output reg [15:0] led = 0,
+                    output reg [6:0] seg = 7'b1111111,
+                    output reg [3:0] an = 4'b1111,
+                    output reg dp = 1
 
     );
     
@@ -62,9 +35,8 @@ wire [11:0] mouse_press_x;
 wire [11:0] mouse_press_y;
 wire mr, ml;
 
-reg seg_status;
-reg an_status;
-reg dp_status;
+reg [4:0] LD11_15 = 0;
+reg [9:0] LD0_9 = 0;
 wire [6:0] seg_paint;
 
 clock_divider d1 (clock, 9999999, clock_5hz);
@@ -83,35 +55,37 @@ MouseCtl m1 (clock,
              PS2Clk,
              PS2Data);
 
-paint p1 (clock,left,right,1,xpos,ypos,pixel_index,led,ml,mr,mouse_press_x,mouse_press_y,seg_paint,oled_data2);
+//paint p1 (clock,left,right,1,xpos,ypos,pixel_index,led,ml,mr,mouse_press_x,mouse_press_y,seg_paint,oled_data2);
+
+reg [31:0] COUNT_VAL = 0;
 
 always @(posedge clock) begin
-    if(count == 0)begin
-        seg_status <= 7'b1000001; //V
-        an_status <= 4'b0111;
-        dp_status <= 0;
-    end else if (count == 1) begin
-        seg_status <= 7'b0001000; //A
-        an_status <= 4'b1011;
-        dp_status <= 0;
-    end else if (count == 2) begin
-        seg_status <= 7'b1110001; //L 
-        an_status <= 4'b1101;
-        dp_status <= 1;
-    end else begin
-        seg_status <= seg_paint;
-        an_status <= 4'b1110;
-        dp_status <= 0;
+    led[15:0] <= {LD11_15, clock_5hz, LD0_9};
+    COUNT_VAL <= (COUNT_VAL == 1499997) ? 0 : COUNT_VAL + 1;
+    if (COUNT_VAL == 0) begin
+        seg[6:0] <= 7'b1000001;
+        an[3:0] <= 4'b0111;
+        dp <= 1;
+    end
+    if (COUNT_VAL == 499999) begin
+        seg[6:0] <= 7'b0001000;
+        an[3:0] <= 4'b1011;
+        dp <= 1;
+    end
+    if (COUNT_VAL == 999998) begin
+        seg[6:0] <= 7'b1000111;
+        an[3:0] <= 4'b1101;
+        dp <= 0;
     end
 end
 
-always @(posedge clock_6p25mhz) begin
-    if (count < 4) begin
-        count <= count +1;
-    end else begin
-        count <= 0;
-    end
-end
+//always @(posedge clock_6p25mhz) begin
+//    if (count < 4) begin
+//        count <= count +1;
+//    end else begin
+//        count <= 0;
+//    end
+//end
 
 Oled_Display oled1 (clock_6p25mhz,
                     0, 
@@ -120,20 +94,7 @@ Oled_Display oled1 (clock_6p25mhz,
                     sample_pixel, 
                     pixel_index, 
                     oled_data2, 
-                    rgb_cs, 
-                    rgb_sdin, 
-                    rgb_sclk, 
-                    rgb_d_cn, 
-                    rgb_resn, 
-                    rgb_vccen,
-                    rgb_pmoden); 
+                    JB[0],JB[1],JB[2],JB[3],JB[4],JB[5],JB[6]); 
 
-
-assign led[10] = clock_5hz;
-
-
-assign an[3:1] = an_status;
-assign seg = seg_status; 
-assign dp = dp_status;
 
 endmodule
