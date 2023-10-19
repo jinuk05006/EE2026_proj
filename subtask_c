@@ -1,0 +1,200 @@
+`timescale 1ns / 1ps
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  FILL IN THE FOLLOWING INFORMATION:
+//  STUDENT A NAME: 
+//  STUDENT B NAME:
+//  STUDENT C NAME: 
+//  STUDENT D NAME:  
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+module Top_Student (
+    input clock,
+    input btnC,
+    output rgb_cs,
+    output rgb_sdin,
+    output rgb_sclk,
+    output rgb_d_cn,
+    output rgb_resn,
+    output rgb_vccen,
+    output rgb_pmoden
+    // Delete this comment and include Basys3 inputs and outputs here
+);
+
+wire clock_6p25mhz;
+wire clock_20hz;
+wire clock_1hz;
+wire oled;
+wire frame_begin;
+wire sending_pixels;
+wire sample_pixel;
+wire [12:0] pixel_index;
+wire move;
+
+reg [15:0] oled_data = 16'h07E0;
+reg [12:0] x_axis;
+reg [12:0] y_axis;
+reg [12:0] x = 12'd0;
+reg [12:0] y = 12'd0;
+reg btnc_flag = 0;
+reg [31:0] y_position = 2;
+reg [31:0] x_position = 49;
+reg [31:0] x_limit = 46;
+reg [31:0] y_limit = 2;
+reg [2:0] counter = 0;
+
+clock_divider d1 (clock, 7, clock_6p25mhz);
+clock_divider d2 (clock, 2499999, clock_20hz);
+clock_divider d3 (clock, 49999999, clock_1hz);
+
+// Flags to control pixel movement
+reg move_pixel = 1'b0;  // Flag to enable pixel movement
+reg vertical_movement = 1'b1;  // Flag to indicate vertical movement
+reg horizontal_movement = 1'b0;  // Flag to indicate horizontal movement
+reg move_back = 1'b0;
+reg neg_hori = 1'b0;
+reg neg_vert = 1'b0;
+reg red_pixel = 1'b0;
+
+// Debouncer
+reg [1:0] system_unlocked = 0;
+reg animation_in_progress = 1'b0;
+
+always @(posedge clock_1hz) begin
+    counter <= counter + 1;
+end
+
+always @(posedge clock_20hz) begin
+    if (btnC) begin
+        system_unlocked <= 1;
+        if (!animation_in_progress) begin
+            move_pixel <= 1'b1;
+            animation_in_progress <= 1'b1;
+        end
+    end
+
+    // Move the pixel if the move_pixel flag is enabled
+    if ((system_unlocked == 1)) begin
+        if (move_pixel == 1'b1) begin
+            if (vertical_movement == 1'b1) begin
+                // Move vertically
+                if (y_position < 35) begin
+                    y_position <= y_position + 1;
+                end else begin
+                    horizontal_movement <= 1'b1;  // Start horizontal movement
+                end
+            end
+
+            // Move horizontally
+            if (horizontal_movement == 1'b1) begin
+                if (x_position < 64) begin
+                    x_position <= x_position + 1;
+                end
+
+                if (counter == 1) begin
+                    move_back <= 1'b1;
+                end
+
+                if (counter == 2) begin
+                    neg_hori <= 1'b1;
+                end
+
+                if (move_back == 1'b1) begin
+                    if (neg_hori == 1'b1) begin
+                        if (x_position != 49) begin
+                            x_position <= x_position - 1;
+                        end else begin
+                            neg_vert <= 1'b1;  // Start horizontal movement
+                        end
+                    end
+
+                    if (neg_vert == 1'b1) begin
+                        if (y_position != 2) begin
+                            y_position <= y_position - 1;
+                        end
+
+                        if (counter == 1) begin
+                            red_pixel <= 1'b1;
+                        end
+
+//                        if (red_pixel == 1'b1) begin
+////                            move_pixel <= 1'b0;
+//                             animation_in_progress <= 0;
+////                            system_unlocked <= 0;
+                       end
+                     end
+                   end
+                 end
+               end
+//             end
+//           end
+//         end   
+        if (red_pixel == 1'b0) begin
+//                            move_pixel <= 1'b0;
+            animation_in_progress <= 0;
+//            system_unlocked <= 0;
+        end
+       end
+always @(posedge clock_6p25mhz) begin
+    x_axis = pixel_index % 12'd96;
+    y_axis = pixel_index / 12'd96;
+
+    // 3 by 3 
+    if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
+        oled_data <= 16'b11111_000000_00000;  // Set to red
+    end else begin
+        oled_data <= 16'd0;
+    end
+
+    // Check the position and set the pixel color
+    if (system_unlocked == 1) begin
+        if (move_pixel == 1'b1) begin
+            if (vertical_movement == 1'b1) begin
+                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) begin
+                    oled_data <= 16'b11111_000000_00000;  // Set to red
+                end
+                if (horizontal_movement == 1'b1) begin
+                    if ((x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) || (y_axis >= (y_position - 3) && y_axis < y_position && x_axis >= 46 && x_axis < x_position)) begin
+                        oled_data <= 16'b11111_000000_00000; // Set to red
+                    end
+                end
+
+                if (move_back == 1'b1) begin
+                    if (x_axis >= (x_position - 3) && x_axis < x_position && y_axis >= (y_position - 3) && y_axis < y_position) begin
+                        oled_data <= 16'b00000_111111_00000;
+                    end
+
+                    if (neg_hori == 1'b1) begin
+                        if ((x_axis >= x_position && x_axis < 64 && y_axis >= 32 && y_axis < 35)) begin
+                            oled_data <= 16'b00000_111111_00000; // Set to red
+                        end
+                        if (neg_vert == 1'b1) begin
+                            if ((x_axis >= 46 && x_axis < 64 && y_axis >= 32 && y_axis < 35) || (y_axis >= (y_position) && y_axis < 35 && x_axis >= 46 && x_axis < 49)) begin
+                                oled_data <= 16'b00000_111111_00000;  // Set to red
+                            end
+                            if (red_pixel == 1'b1) begin
+                                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
+                                    oled_data <= 16'b11111_000000_00000;  // Set to red
+                                end else begin
+                                    oled_data <= 16'd0;
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+
+Oled_Display oled1 (
+    clock_6p25mhz, 0, frame_begin, sending_pixels,
+    sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
+    rgb_pmoden
+);
+// Delete this comment and write your codes and instantiations here
+
+endmodule
