@@ -1,0 +1,349 @@
+`timescale 1ns / 1ps
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  FILL IN THE FOLLOWING INFORMATION:
+//  STUDENT A NAME: 
+//  STUDENT B NAME:
+//  STUDENT C NAME: 
+//  STUDENT D NAME:  
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module Top_Student (inout PS2Clk,inout PS2Data,input clock, input btnC, input btnL, input btnR, input [15:0] sw, output rgb_cs, output rgb_sdin , output rgb_sclk, output rgb_d_cn, output rgb_resn, output rgb_vccen, output rgb_pmoden,
+    output [15:0] led,output [6:0] seg,output [3:0] an,
+                          output dp // Delete this comment and include Basys3 inputs and outputs here
+    );
+    wire clock_6p25mhz;
+    wire clock_45hz;
+    wire frame_begin;
+    wire sending_pixels;
+    wire sample_pixel;
+    wire [12:0] pixel_index;
+    wire mouse_x_pos;
+    wire mouse_y_pos;
+    reg [15:0] oled_data = 16'h07E0;
+    reg [12:0] x_axis;
+    reg [12:0] y_axis;
+   
+    reg btnc_flag = 0;
+    reg btnr_flag = 0;
+    reg btnl_flag = 0;
+    
+    reg left_edge = 2;
+    reg left_flag = 0;
+    reg right_edge = 94;
+    reg right_flag = 0;
+      
+    clock_divider d1 (clock, 7 , clock_6p25mhz);
+    clock_divider d2 (clock, 1111110, clock_45hz);
+    
+    //subtask 4.B
+    reg [31:0] subtask4B_COUNT = 0;
+    reg three_seconds_passed = 0;
+    reg [31:0] subtask4B_debounceCOUNT = 0;
+    reg [4:0] position = 2;
+    
+    always @ (posedge clock_6p25mhz) begin
+        x_axis = pixel_index % 12'd96;
+        y_axis = pixel_index / 12'd96;
+        
+        if (subtask4B_COUNT < 18750000) begin
+            subtask4B_COUNT <= subtask4B_COUNT + 1;
+            three_seconds_passed <= 0;
+        end
+        
+        else begin
+            three_seconds_passed <= 1;
+        end
+        
+        //subtask 4.B1
+        if ((three_seconds_passed == 0)
+        & ((x_axis >= 38 && x_axis < 58 && y_axis >= 22 && y_axis < 25)
+        | (x_axis >= 38 && x_axis < 58 && y_axis >= 39 && y_axis < 42)
+        | (x_axis >= 38 && x_axis < 41 && y_axis >= 25 && y_axis < 39)
+        | (x_axis >= 55 && x_axis < 58 && y_axis >= 25 && y_axis < 39)))
+        begin
+            oled_data <= 16'b00000_111111_00000;
+        end
+        else begin
+            oled_data <= 16'b00000_000000_00000;
+        end
+        
+        //subtask 4.B2
+        if ((three_seconds_passed == 1)
+        & ((x_axis >= 8 && x_axis < 16 && y_axis >= 28 && y_axis < 36)
+        | (x_axis >= 26 && x_axis < 34 && y_axis >= 28 && y_axis < 36)
+        | (x_axis >=44 && x_axis < 52 && y_axis >= 28 && y_axis < 36)
+        | (x_axis >= 62 && x_axis < 70 && y_axis >= 28 && y_axis < 36)
+        | (x_axis >= 80 && x_axis < 88 && y_axis >= 28 && y_axis < 36)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+
+        //subtask 4.B3
+        
+        //left button
+        if ((three_seconds_passed == 1) & (btnL == 1)) begin
+            if (subtask4B_debounceCOUNT < 625000) begin
+                subtask4B_debounceCOUNT <= subtask4B_debounceCOUNT + 1;
+            end
+            else begin
+                if (position != 0) begin
+                    position <= position - 1;
+                    subtask4B_debounceCOUNT <= 0;
+                end
+                else begin
+                    subtask4B_debounceCOUNT <= 0;
+                end
+            end
+        end
+        
+        //right button
+        if ((three_seconds_passed == 1) & (btnR == 1)) begin
+            if (subtask4B_debounceCOUNT < 625000) begin
+                subtask4B_debounceCOUNT <= subtask4B_debounceCOUNT + 1;
+            end
+            else begin
+                if (position != 4) begin
+                    position <= position + 1;
+                    subtask4B_debounceCOUNT <= 0;
+                end
+                else begin
+                    subtask4B_debounceCOUNT <= 0;
+                end
+            end
+        end
+        
+        // make green border appear at different positions
+        if ((three_seconds_passed == 1) & (position == 0)) begin
+            if ((x_axis >= 2 && x_axis < 22 && y_axis >= 22 && y_axis < 25)
+            | (x_axis >= 2 && x_axis < 22 && y_axis >= 39 && y_axis < 42)
+            | (x_axis >= 2 && x_axis < 5 && y_axis >= 25 && y_axis < 39)
+            | (x_axis >= 19 && x_axis < 22 && y_axis >= 25 && y_axis < 39))
+            begin
+                oled_data <= 16'b00000_111111_00000;
+            end
+        end
+        
+        if ((three_seconds_passed == 1) & (position == 1)) begin
+            if ((x_axis >= 20 && x_axis < 40 && y_axis >= 22 && y_axis < 25)
+            | (x_axis >= 20 && x_axis < 40 && y_axis >= 39 && y_axis < 42)
+            | (x_axis >= 20 && x_axis < 23 && y_axis >= 25 && y_axis < 39)
+            | (x_axis >= 37 && x_axis < 40 && y_axis >= 25 && y_axis < 39))
+            begin
+                oled_data <= 16'b00000_111111_00000;
+            end
+        end
+        
+        if ((three_seconds_passed == 1) & (position == 2)) begin
+            if ((x_axis >= 38 && x_axis < 58 && y_axis >= 22 && y_axis < 25)
+            | (x_axis >= 38 && x_axis < 58 && y_axis >= 39 && y_axis < 42)
+            | (x_axis >= 38 && x_axis < 41 && y_axis >= 25 && y_axis < 39)
+            | (x_axis >= 55 && x_axis < 58 && y_axis >= 25 && y_axis < 39))
+            begin
+                oled_data <= 16'b00000_111111_00000;
+            end
+        end
+        
+        if ((three_seconds_passed == 1) & (position == 3)) begin
+            if ((x_axis >= 56 && x_axis < 76 && y_axis >= 22 && y_axis < 25)
+            | (x_axis >= 56 && x_axis < 76 && y_axis >= 39 && y_axis < 42)
+            | (x_axis >= 56 && x_axis < 59 && y_axis >= 25 && y_axis < 39)
+            | (x_axis >= 73 && x_axis < 76 && y_axis >= 25 && y_axis < 39))
+            begin
+                oled_data <= 16'b00000_111111_00000;
+            end
+        end
+        
+        if ((three_seconds_passed == 1) & (position == 4)) begin
+            if ((x_axis >= 74 && x_axis < 94 && y_axis >= 22 && y_axis < 25)
+            | (x_axis >= 74 && x_axis < 94 && y_axis >= 39 && y_axis < 42)
+            | (x_axis >= 74 && x_axis < 77 && y_axis >= 25 && y_axis < 39)
+            | (x_axis >= 91 && x_axis < 94 && y_axis >= 25 && y_axis < 39))
+            begin
+                oled_data <= 16'b00000_111111_00000;
+            end
+        end
+        
+    end
+
+//// group task
+//    MouseCtl m1 (clock, 0, xpos, ypos, zpos, left, mid, right, new_event, 0,0,0,0,0, PS2Clk, PS2Data);
+//        wire mr, ml;
+//    paint p1 (clock,left,right,1,xpos,ypos,pixel_index,led,ml,mr,mouse_press_x,mouse_press_y,seg_status2,oled_data);
+
+      
+      
+    
+                
+    Oled_Display oled1 (clock_6p25mhz, 0 , frame_begin, sending_pixels,
+        sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
+        rgb_pmoden);
+         
+endmodule
+
+//// subtask 4.C
+//    wire clock_6p25mhz;
+//    wire clock_20hz;
+//    wire clock_1333hz;
+//    wire oled;
+//    wire frame_begin;
+//    wire sending_pixels;
+//    wire sample_pixel;
+//    wire [12:0] pixel_index;
+//    wire move;
+//    reg [15:0] oled_data = 16'h07E0;
+//    reg [12:0] x_axis;
+//    reg [12:0] y_axis;
+//    reg [12:0] x = 12'd0;
+//    reg [12:0] y = 12'd0 ;
+//    reg btnc_flag = 0;
+//    reg y_position = 2;
+//    reg x_position = 49;
+    
+      
+//    clock_divider d1 (clock, 7 , clock_6p25mhz);
+//    clock_divider d2 (clock, 2499999, clock_20hz);
+//    clock_divider d3 (clock, 4687500,clock_1333hz);
+    
+
+//// Flags to control pixel movement
+//    reg move_pixel = 1'b1;  // Flag to enable pixel movement
+//    reg vertical_movement = 1'b1;  // Flag to indicate vertical movement
+//    reg horizontal_movement = 1'b0;  // Flag to indicate horizontal movement
+
+//    // Maximum limits for pixel movement
+//    reg [12:0] x_limit;  // Maximum X coordinate
+//    reg [12:0] y_limit;  // Maximum Y coordinate
+  
+      
+//   always @ (posedge clock_20hz) begin
+//        // Move the pixel if the move_pixel flag is enabled
+//        if (move_pixel) begin
+//            if ((btnC || (btnc_flag == 1)) && vertical_movement) begin
+//                // Move vertically
+//                if (y_position < 30) begin
+//                    y_position <= y_position + 1;
+////                    y <= y_axis;
+//                end else begin
+//                    y_position <= 30;
+//                    vertical_movement <= 1'b0;  // Stop vertical movement
+//                    horizontal_movement <= 1'b1;  // Start horizontal movement
+//                end
+//            end
+//            // Move horizontally
+//            if (horizontal_movement) begin
+//                if (x_position < 15) begin
+//                    x_position <= x_position + 1;
+                    
+//                end else begin
+//                    x_axis <= 15; // You can complete the L shape by adding more logic
+//                    move_pixel <= 1'b0;  // Stop pixel movement
+//                end
+//            end
+//        end
+//    end
+    
+//    always @ (posedge clock_6p25mhz) begin
+//        x_axis = pixel_index % 12'd96;
+//        y_axis = pixel_index / 12'd96;
+    
+//        //3 by 3 
+//        if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
+//            oled_data <= 16'b11111_000000_00000;  // Set to red
+//        end else begin
+//            oled_data <= 16'd0;
+//        end
+//        // Check the position and set the pixel color
+//        if (btnC || (btnc_flag == 1)) begin
+            
+//            if (move_pixel) begin
+//                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (5 + y_position)) begin
+//                    oled_data <= 16'b11111_000000_00000;  // Set to red
+//                end else begin
+//                    oled_data <= 16'd0;
+//                end
+//            end
+//        end
+//    end
+    
+//    Oled_Display oled1 (clock_6p25mhz, 0 , frame_begin, sending_pixels,
+//        sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
+//        rgb_pmoden);
+//endmodule
+
+
+//    // subtask 4.D  
+//    always @(posedge clock_6p25mhz) begin
+    
+//        x_axis = pixel_index % 12'd96;
+//        y_axis = pixel_index / 12'd96;
+        
+//        if((x_axis >= 2 && x_axis < 6)
+//            && (y_axis >= 2 && y_axis < 6)
+//            && (btnc_flag == 0) && (btnr_flag == 0) && (btnl_flag == 0)) begin
+//            oled_data <= 16'b0000000000011111;
+//        end 
+        
+//        else if(btnc_flag == 1
+//            && (x_axis >= 46  && x_axis < 50)
+//            && (y_axis >= 30 && y_axis < 34)) begin
+//            oled_data <= 16'b0000011111100000;
+//            position <= 48;
+            
+//        end
+        
+//        else if((btnl_flag == 1 || btnr_flag == 1)
+//            && (x_axis >= 2 && x_axis < 6) //point of failure
+//            && (y_axis >= 30 && y_axis < 34)) begin
+//            oled_data <= 16'b0000011111100000;
+//        end
+        
+//        else begin
+//            oled_data <= 16'd0;
+//        end
+        
+//    end
+    
+//    always @(posedge clock_45hz) begin
+    
+//        if (btnl_flag == 1 && left_flag == 0) begin
+//            position <= position - 1;
+//            right_flag <= 0;
+//        end
+        
+//        else if (btnr_flag == 1 && right_flag == 0) begin
+//            position <= position + 1;
+//            left_flag <= 0;
+//        end
+        
+//        else if (position == left_edge) begin
+//            left_flag <= 1;
+//        end
+        
+//        else if (position == right_edge) begin
+//            right_flag <= 1;
+//        end
+//    end
+    
+//    always @(posedge clock) begin
+//        if (btnC == 1) begin
+//            btnc_flag <= 1;
+//            btnr_flag <= 0;
+//            btnl_flag <= 0;
+//        end
+        
+//        else if (btnR == 1) begin
+//            btnc_flag <= 0;
+//            btnr_flag <= 1;
+//            btnl_flag <= 0;
+//        end
+        
+//        else if (btnL == 1) begin
+//            btnc_flag <= 0;
+//            btnr_flag <= 0;
+//            btnl_flag <= 1;
+//        end
+//    end
