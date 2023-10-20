@@ -1,13 +1,14 @@
-module group_paint( input state,
+module group_task( input [3:0] state,
                     inout PS2Clk, 
                     inout PS2Data,
                     input clock, 
+                    input [15:0] sw,
                     output [6:0] JB,
                     output [15:0] led,
                     output reg [6:0] seg = 7'b1111111,
                     output reg [3:0] an = 4'b1111,
-                    output reg dp = 1
-
+                    output reg dp = 1,
+                    output reg [3:0] state_out =0
     );
     
 wire clock_6p25mhz;
@@ -58,22 +59,41 @@ MouseCtl m1 (clock,
 reg [31:0] COUNT_VAL = 0;
 
 always @(posedge clock) begin
-    led_status <= {LD11_15, clock_5hz};
-    COUNT_VAL <= (COUNT_VAL == 1499997) ? 0 : COUNT_VAL + 1;
-    if (COUNT_VAL == 0) begin
-        seg[6:0] <= 7'b1000001;
-        an[3:0] <= 4'b0111;
-        dp <= 1;
-    end
-    if (COUNT_VAL == 499999) begin
-        seg[6:0] <= 7'b0001000;
-        an[3:0] <= 4'b1011;
-        dp <= 1;
-    end
-    if (COUNT_VAL == 999998) begin
-        seg[6:0] <= 7'b1000111;
-        an[3:0] <= 4'b1101;
-        dp <= 0;
+    if (state == 0) begin
+        if (sw[3] == 1) begin
+            state_out <= 4;
+            end
+        else if (sw[3] == 0 && sw[2] == 1) begin
+            state_out <= 3;
+            end
+        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 1) begin
+            state_out <= 2;
+            end
+    
+         else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+            state_out <= 1;
+            end          
+              
+        else begin 
+            state_out <= 0;
+            led_status <= {LD11_15, clock_5hz};
+            COUNT_VAL <= (COUNT_VAL == 1499997) ? 0 : COUNT_VAL + 1;
+            if (COUNT_VAL == 0) begin
+                seg[6:0] <= 7'b1000001;
+                an[3:0] <= 4'b0111;
+                dp <= 1;
+            end
+            if (COUNT_VAL == 499999) begin
+                seg[6:0] <= 7'b0001000;
+                an[3:0] <= 4'b1011;
+                dp <= 1;
+            end
+            if (COUNT_VAL == 999998) begin
+                seg[6:0] <= 7'b1000111;
+                an[3:0] <= 4'b1101;
+                dp <= 0;
+            end
+        end
     end
 end
 
