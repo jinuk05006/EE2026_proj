@@ -10,16 +10,13 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-module Top_Student (
+module subtask_c (
+    input state,
     input clock,
     input btnC,
-    output rgb_cs,
-    output rgb_sdin,
-    output rgb_sclk,
-    output rgb_d_cn,
-    output rgb_resn,
-    output rgb_vccen,
-    output rgb_pmoden
+    input [15:0] sw,
+    output [6:0] JB,
+    output reg [3:0] state_out = 3
     // Delete this comment and include Basys3 inputs and outputs here
 );
 
@@ -33,7 +30,7 @@ wire sample_pixel;
 wire [12:0] pixel_index;
 wire move;
 
-reg [15:0] oled_data = 16'h07E0;
+reg [15:0] oled_data;
 reg [12:0] x_axis;
 reg [12:0] y_axis;
 reg [12:0] x = 12'd0;
@@ -63,10 +60,13 @@ reg [1:0] system_unlocked = 0;
 reg animation_in_progress = 1'b0;
 
 always @(posedge clock_1hz) begin
+//    if (state == 3) begin
     counter <= counter + 1;
-end
+    end
+
 
 always @(posedge clock_20hz) begin
+//    if (state == 3) begin
     if (btnC) begin
         system_unlocked <= 1;
         if (!animation_in_progress) begin
@@ -136,65 +136,87 @@ always @(posedge clock_20hz) begin
             animation_in_progress <= 0;
 //            system_unlocked <= 0;
         end
-       end
-always @(posedge clock_6p25mhz) begin
-    x_axis = pixel_index % 12'd96;
-    y_axis = pixel_index / 12'd96;
-
-    // 3 by 3 
-    if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
-        oled_data <= 16'b11111_000000_00000;  // Set to red
-    end else begin
-        oled_data <= 16'd0;
     end
 
-    // Check the position and set the pixel color
-    if (system_unlocked == 1) begin
-        if (move_pixel == 1'b1) begin
-            if (vertical_movement == 1'b1) begin
-                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) begin
-                    oled_data <= 16'b11111_000000_00000;  // Set to red
+always @(posedge clock) begin
+    
+    x_axis = pixel_index % 12'd96;
+    y_axis = pixel_index / 12'd96;
+    
+//        if (state == 3) begin
+//                if (sw[3] == 1) begin
+//                state_out <= 4;
+//                end
+//                //        else if (sw[3] == 0 && sw[2] == 1) begin
+//                //            state_out <= 3;
+//                //            end
+//                else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 1) begin
+//                state_out <= 2;
+//                end
+                
+//                else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+//                state_out <= 1;
+//                end         
+                
+//                else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 0) begin
+//                state_out <= 0;
+//                end     
+                      
+//                else begin 
+//                state_out <= 3;
+                // 3 by 3 
+                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
+                    oled_data <= 16'b1111100000000000;  // Set to red
+                end else begin
+                    oled_data <= 16'd0;
                 end
-                if (horizontal_movement == 1'b1) begin
-                    if ((x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) || (y_axis >= (y_position - 3) && y_axis < y_position && x_axis >= 46 && x_axis < x_position)) begin
-                        oled_data <= 16'b11111_000000_00000; // Set to red
-                    end
-                end
-
-                if (move_back == 1'b1) begin
-                    if (x_axis >= (x_position - 3) && x_axis < x_position && y_axis >= (y_position - 3) && y_axis < y_position) begin
-                        oled_data <= 16'b00000_111111_00000;
-                    end
-
-                    if (neg_hori == 1'b1) begin
-                        if ((x_axis >= x_position && x_axis < 64 && y_axis >= 32 && y_axis < 35)) begin
-                            oled_data <= 16'b00000_111111_00000; // Set to red
-                        end
-                        if (neg_vert == 1'b1) begin
-                            if ((x_axis >= 46 && x_axis < 64 && y_axis >= 32 && y_axis < 35) || (y_axis >= (y_position) && y_axis < 35 && x_axis >= 46 && x_axis < 49)) begin
-                                oled_data <= 16'b00000_111111_00000;  // Set to red
+            
+                // Check the position and set the pixel color
+                if (system_unlocked == 1) begin
+                    if (move_pixel == 1'b1) begin
+                        if (vertical_movement == 1'b1) begin
+                            if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) begin
+                                oled_data <= 16'b11111_000000_00000;  // Set to red
                             end
-                            if (red_pixel == 1'b1) begin
-                                if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
-                                    oled_data <= 16'b11111_000000_00000;  // Set to red
-                                end else begin
-                                    oled_data <= 16'd0;
+                            if (horizontal_movement == 1'b1) begin
+                                if ((x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < (y_position)) || (y_axis >= (y_position - 3) && y_axis < y_position && x_axis >= 46 && x_axis < x_position)) begin
+                                    oled_data <= 16'b11111_000000_00000; // Set to red
+                                end
+                            end
+            
+                            if (move_back == 1'b1) begin
+                                if (x_axis >= (x_position - 3) && x_axis < x_position && y_axis >= (y_position - 3) && y_axis < y_position) begin
+                                    oled_data <= 16'b00000_111111_00000;
+                                end
+            
+                                if (neg_hori == 1'b1) begin
+                                    if ((x_axis >= x_position && x_axis < 64 && y_axis >= 32 && y_axis < 35)) begin
+                                        oled_data <= 16'b00000_111111_00000; // Set to red
+                                    end
+                                    if (neg_vert == 1'b1) begin
+                                        if ((x_axis >= 46 && x_axis < 64 && y_axis >= 32 && y_axis < 35) || (y_axis >= (y_position) && y_axis < 35 && x_axis >= 46 && x_axis < 49)) begin
+                                            oled_data <= 16'b00000_111111_00000;  // Set to red
+                                        end
+                                        if (red_pixel == 1'b1) begin
+                                            if (x_axis >= 46 && x_axis < 49 && y_axis >= 2 && y_axis < 5) begin
+                                                oled_data <= 16'b11111_000000_00000;  // Set to red
+                                            end else begin
+                                                oled_data <= 16'd0;
+                                            end
+                                        end
+                                    end
                                 end
                             end
                         end
                     end
                 end
             end
-        end
-    end
-end
+
 
 
 Oled_Display oled1 (
     clock_6p25mhz, 0, frame_begin, sending_pixels,
-    sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
-    rgb_pmoden
-);
+    sample_pixel, pixel_index, oled_data, JB[0],JB[1],JB[2],JB[3],JB[4],JB[5],JB[6]);
 // Delete this comment and write your codes and instantiations here
 
 endmodule
