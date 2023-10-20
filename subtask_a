@@ -1,0 +1,300 @@
+`timescale 1ns / 1ps
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  FILL IN THE FOLLOWING INFORMATION:
+//  STUDENT A NAME: 
+//  STUDENT B NAME:
+//  STUDENT C NAME: 
+//  STUDENT D NAME:  
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+module subtask_a (
+  input clock,
+  input btnC,
+  input btnU,      // Up pushbutton input
+  output [6:0] JB
+);
+
+  wire clock_6p25mhz;
+  wire clock_25mhz;
+  wire clock_2hz;
+  wire frame_begin;
+  wire sending_pixels;
+  wire sample_pixel;
+  wire [12:0] pixel_index;
+  reg [15:0] oled_data = 16'h07E0;
+  reg [15:0] additional_border_color = 16'hF800;  // Orange color (RGB565 format)
+  reg [12:0] x_axis;
+  reg [12:0] y_axis;
+
+  
+
+  // State machine for controlling the green borders
+  reg taska = 0;
+  reg red = 0;
+  reg [23:0] debouncer = 0;
+  reg [1:0] state = 0;
+  reg [3:0] count = 0;
+  reg [22:0] counter;
+  reg red_button;
+  
+  
+  clock_divider d1(clock, 7, clock_6p25mhz);
+  clock_divider d2(clock, 1, clock_25mhz);
+  clock_divider d3 (clock, 25000000, clock_2hz);
+ 
+             
+   always @ (posedge clock_25mhz) begin
+       x_axis = pixel_index % 12'd96;
+       y_axis = pixel_index / 12'd96; 
+                  
+       if (x_axis >= 5 && x_axis < 6 && y_axis >= 5 && y_axis < 59) begin
+           oled_data <= 16'b11111_000000_00000;
+       end
+       else if (x_axis >= 5 && x_axis < 91 && y_axis < 6 && y_axis >= 5) begin
+          oled_data <= 16'b1111100000000000;
+       end
+       else if (x_axis >= 5 && x_axis < 91 && y_axis < 59 && y_axis >= 58) begin
+           oled_data <= 16'b1111100000000000;
+       end
+       else if (x_axis >= 90 && x_axis < 91 && y_axis >= 5 && y_axis < 59) begin
+            oled_data <= 16'b1111100000000000;
+       end        
+       else begin
+       if (taska == 0) begin
+           oled_data <= 16'b0000000000000000;
+       end
+       if (taska == 1) begin
+           if (x_axis >= 7 && x_axis < 10 && y_axis >= 7 && y_axis < 57) begin
+               oled_data <= 16'b11111_011111_00000;
+                             end
+           else if (x_axis >= 7 && x_axis < 89 && y_axis < 10 && y_axis >= 7) begin
+                                 oled_data <= 16'b11111_011111_00000;
+           end
+                             else if (x_axis >= 7 && x_axis < 89 && y_axis < 57 && y_axis >= 54) begin
+                                 oled_data <= 16'b11111_011111_00000;
+                             end
+                             else if (x_axis >= 86 && x_axis < 89 && y_axis >= 7 && y_axis < 57) begin
+                                 oled_data <= 16'b11111_011111_00000;
+                             end 
+                             else begin
+                                 if (state == 0) begin
+                                     oled_data <= 16'd0;
+                                 end
+                                 if (state >= 1) begin
+                                     if (x_axis >= 12 && x_axis < 13 && y_axis >= 12 && y_axis < 52) begin
+                                         oled_data <= 16'b00000_111111_00000;
+                                     end
+                                     else if (x_axis >= 12 && x_axis < 84 && y_axis < 13 && y_axis >= 12) begin
+                                         oled_data <= 16'b00000_111111_00000;
+                                     end
+                                     else if (x_axis >= 12 && x_axis < 84 && y_axis < 52 && y_axis >= 51) begin
+                                         oled_data <= 16'b00000_111111_00000;
+                                     end
+                                     else if (x_axis >= 83 && x_axis < 84 && y_axis >= 12 && y_axis < 52) begin
+                                         oled_data <= 16'b00000_111111_00000;
+                                     end 
+                                     else begin
+                                         if (state == 1) begin
+                                             oled_data <= 16'd0;
+                                         end
+                                         if (state >= 2) begin
+                                             if (x_axis >= 15 && x_axis < 17 && y_axis >= 15 && y_axis < 49) begin
+                                                 oled_data <= 16'b00000_111111_00000;
+                                             end
+                                             else if (x_axis >= 15 && x_axis < 81 && y_axis < 17 && y_axis >= 15) begin
+                                                 oled_data <= 16'b00000_111111_00000;
+                                             end
+                                             else if (x_axis >= 15 && x_axis < 81 && y_axis < 49 && y_axis >= 47) begin
+                                                 oled_data <= 16'b00000_111111_00000;
+                                             end
+                                             else if (x_axis >= 79 && x_axis < 81 && y_axis >= 15 && y_axis < 47) begin
+                                                 oled_data <= 16'b00000_111111_00000;
+                                             end 
+                                             else begin
+                                                 if (state == 2) begin
+                                                     oled_data <= 16'd0;
+                                                 end
+                                                 if (state >= 3) begin
+                                                     if (x_axis >= 20 && x_axis < 23 && y_axis >= 20 && y_axis < 44) begin
+                                                         oled_data <= 16'b00000_111111_00000;
+                                                     end
+                                                     else if (x_axis >= 20 && x_axis < 76 && y_axis < 23 && y_axis >= 20) begin
+                                                         oled_data <= 16'b00000_111111_00000;
+                                                     end
+                                                     else if (x_axis >= 20 && x_axis < 76 && y_axis < 44 && y_axis >= 41) begin
+                                                         oled_data <= 16'b00000_111111_00000;
+                                                     end
+                                                     else if (x_axis >= 73 && x_axis < 76 && y_axis >= 20 && y_axis < 44) begin
+                                                         oled_data <= 16'b00000_111111_00000;
+                                                     end 
+                                                     else begin
+                                                         oled_data <= 16'd0;
+                                                      end       
+                                                  end
+                                               end 
+                                            end
+                                         end
+                                      end
+                                   end
+                                end
+                             end
+                          if (x_axis >= 45 && x_axis < 51 && y_axis >= 29 && y_axis < 35) begin
+                             if (red == 1) begin
+                                 oled_data <= 16'b11111_000000_00000;
+                             end
+                             else begin 
+                                 oled_data <= 16'd0;
+                             end
+                          end
+                       end
+                          
+                 always @ (posedge clock) 
+                   begin 
+                        if (taska == 0 && btnC == 1) begin
+                             taska <=  1;
+                        end
+                   end
+                
+                 always @ (posedge clock_2hz)
+                     begin
+                         if (taska == 1) begin
+                             if(count == 0) begin
+                                 state <= 0;
+                             end
+                             if(count == 4) begin
+                                 state <= 1;
+                             end
+                             if(count == 7) begin
+                                 state <= 2;
+                             end
+                             if(count == 9) begin
+                                 state <= 3;
+                             end          
+                             if(count >= 11) begin
+                                 count <= 0;
+                             end
+                             else begin
+                                 count <= count + 1;
+                             end
+                         end
+                     end
+             
+                  always @(posedge clock or posedge btnU) begin
+                    if (btnU == 1) begin
+                      if (counter < 5000000)
+                        counter <= counter + 1;
+                      else
+                        red_button <= 1;
+                    end
+                    else begin
+                      if (counter > 0)
+                        counter <= counter - 1;
+                      else
+                        red_button <= 0;
+                    end
+                  end
+                    
+                  always @(posedge red_button) begin
+                    red <= ~red;
+                  end   
+//            if (red_square) begin
+//                 if ((((x_axis >= 2 && x_axis < 3) || (x_axis >= 93 && x_axis < 94)) && (y_axis >= 2 && y_axis < 61)) 
+//                || ((x_axis >= 3 && x_axis < 93) && ((y_axis >= 2 && y_axis < 3) || (y_axis >= 60 && y_axis < 61))))
+//                 begin
+//                     oled_data <= 16'b1111100000000000; // Red color (RGB565 format)
+              
+//                end else begin
+//                    oled_data <= 16'd0;                            
+            
+             
+//                end        
+        
+            
+//                if (red_square && orange_square == 1'b1) begin
+//                    if  ((((x_axis >= 5 && x_axis < 8) || (x_axis >= 88 && x_axis < 91)) && (y_axis >= 5 && y_axis < 58)) 
+//                    || ((x_axis >= 8 && x_axis < 88) && ((y_axis >= 5 && y_axis < 8) || (y_axis >= 55 && y_axis < 58))))
+//                 begin
+//                    oled_data <= 16'b11111_111111_00000; 
+//                 end else begin//f
+//                    oled_data <= 16'd0;
+//                end
+        
+        
+
+    // State machine transitions for controlling green borders
+//    case (border_state)
+//      3'b000: begin
+//        if (btnC && (x_axis >= 2 && x_axis < 94) && (y_axis >= 2 && y_axis < 61)) begin
+//          timer_count <= 4'd0;
+//          border_state <= 3'b001; // Transition to state 4.A3(i)
+//        end
+//      end
+//      3'b001: begin
+//        if (timer_count < 200) begin
+//          timer_count <= timer_count + 1;
+//        end else begin
+//          timer_count <= 4'd0;
+//          border_state <= 3'b010; // Transition to state 4.A3(ii)
+//        end
+//      end
+//      3'b010: begin
+//        if (timer_count < 150) begin
+//          timer_count <= timer_count + 1;
+//        end else begin
+//          timer_count <= 4'd0;
+//          border_state <= 3'b011; // Transition to state 4.A3(iii)
+//        end
+//      end
+//      3'b011: begin
+//        if (timer_count < 100) begin
+//          timer_count <= timer_count + 1;
+//        end else begin
+//          timer_count <= 4'd0;
+//          border_state <= 3'b100; // Transition to state 4.A3(iv)
+//        end
+//      end
+//      3'b100: begin
+//        if (timer_count < 1000) begin
+//          timer_count <= timer_count + 1;
+//        end else begin
+//          timer_count <= 4'd0;
+//          border_state <= 3'b000; // Transition to state 4.A3(i)
+//        end
+//      end
+//    endcase
+
+//    // Check for user interaction with the up pushbutton
+//    if (btnU & !up_button_pressed) begin
+//      up_button_pressed <= 1;
+//      if (red_square_visible) begin
+//        red_square_visible <= 0;
+//      end else begin
+//        if (!((x_axis >= 45 && x_axis < 51) && (y_axis >= 27 && y_axis < 33))) begin
+//          red_square_visible <= 1;
+//        end
+//      end
+//    end else if (!btnU) begin
+//      up_button_pressed <= 0;
+//    end
+//  end
+
+  // Draw the red solid square near the center
+//  always @(posedge clock_6p25mhz) begin
+//    if (red_square_visible && (x_axis >= 45 && x_axis < 51) && (y_axis >= 27 && y_axis < 33)) begin
+//      oled_data <= 16'b1111100000000000; // Red color (RGB565 format)
+//    end
+//  end
+  // Oled_Display instantiation (you should define it)
+  Oled_Display oled1 (
+    clock_6p25mhz, 0, frame_begin, sending_pixels,
+    sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
+    rgb_pmoden
+  );
+
+endmodule
+
+
+
