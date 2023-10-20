@@ -11,41 +11,62 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module Top_Student (inout PS2Clk,inout PS2Data,input clock, input btnC, input btnL, input btnR, input [15:0] sw, output rgb_cs, output rgb_sdin , output rgb_sclk, output rgb_d_cn, output rgb_resn, output rgb_vccen, output rgb_pmoden,
-    output [15:0] led,output [6:0] seg,output [3:0] an,
-                          output dp // Delete this comment and include Basys3 inputs and outputs here
+module subtask_b (input state,input clock, input btnL, input btnR, input [15:0] sw, output [6:0] JB, output reg [3:0] state_out = 2 // Delete this comment and include Basys3 inputs and outputs here
     );
-    wire clock_6p25mhz;
-    wire clock_45hz;
-    wire frame_begin;
-    wire sending_pixels;
-    wire sample_pixel;
-    wire [12:0] pixel_index;
-    wire mouse_x_pos;
-    wire mouse_y_pos;
-    reg [15:0] oled_data = 16'h07E0;
-    reg [12:0] x_axis;
-    reg [12:0] y_axis;
-   
-    reg btnc_flag = 0;
-    reg btnr_flag = 0;
-    reg btnl_flag = 0;
-    
-    reg left_edge = 2;
-    reg left_flag = 0;
-    reg right_edge = 94;
-    reg right_flag = 0;
-      
-    clock_divider d1 (clock, 7 , clock_6p25mhz);
-    clock_divider d2 (clock, 1111110, clock_45hz);
-    
-    //subtask 4.B
-    reg [31:0] subtask4B_COUNT = 0;
-    reg three_seconds_passed = 0;
-    reg [31:0] subtask4B_debounceCOUNT = 0;
-    reg [4:0] position = 2;
-    
-    always @ (posedge clock_6p25mhz) begin
+wire clock_6p25mhz;
+wire clock_45hz;
+wire frame_begin;
+wire sending_pixels;
+wire sample_pixel;
+wire [12:0] pixel_index;
+wire mouse_x_pos;
+wire mouse_y_pos;
+reg [15:0] oled_data = 16'h07E0;
+reg [12:0] x_axis;
+reg [12:0] y_axis;
+
+reg btnc_flag = 0;
+reg btnr_flag = 0;
+reg btnl_flag = 0;
+
+reg left_edge = 2;
+reg left_flag = 0;
+reg right_edge = 94;
+reg right_flag = 0;
+  
+clock_divider d1 (clock, 7 , clock_6p25mhz);
+clock_divider d2 (clock, 1111110, clock_45hz);
+
+//subtask 4.B
+reg [31:0] subtask4B_COUNT = 0;
+reg three_seconds_passed = 0;
+reg [31:0] subtask4B_debounceCOUNT = 0;
+reg [4:0] position = 2;
+
+always @ (posedge clock_6p25mhz) begin
+//    if (state == 2) begin
+//        if (sw[3] == 1) begin
+//            state_out <= 4;
+//        end
+        
+//        else if (sw[3] == 0 && sw[2] == 1) begin
+//            state_out <= 3;
+//        end
+        
+////        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 1) begin
+////            state_out <= 2;
+////        end
+        
+//        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+//            state_out <= 1;
+//        end         
+        
+//        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 0) begin
+//            state_out <= 0;
+//        end     
+        
+//        else begin
+//        state_out <= 2;
         x_axis = pixel_index % 12'd96;
         y_axis = pixel_index / 12'd96;
         
@@ -166,21 +187,39 @@ module Top_Student (inout PS2Clk,inout PS2Data,input clock, input btnC, input bt
                 oled_data <= 16'b00000_111111_00000;
             end
         end
-        
-    end
+      end  
+
 
 //// group task
 //    MouseCtl m1 (clock, 0, xpos, ypos, zpos, left, mid, right, new_event, 0,0,0,0,0, PS2Clk, PS2Data);
 //        wire mr, ml;
 //    paint p1 (clock,left,right,1,xpos,ypos,pixel_index,led,ml,mr,mouse_press_x,mouse_press_y,seg_status2,oled_data);
-
-      
-      
     
+//always @(posedge clock) begin    
+//    if (state == 2) begin
+//        if (sw[3] == 1) begin
+//        state_out <= 4;
+//        end
+//        else if (sw[3] == 0 && sw[2] == 1) begin
+//        state_out <= 3;
+//        end
+////        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 1) begin
+////        state_out <= 2;
+////        end
+        
+//        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+//        state_out <= 1;
+//        end      
+        
+//        else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 0) begin
+//        state_out <= 0;
+//        end         
+        
+//     end         
+//end
                 
     Oled_Display oled1 (clock_6p25mhz, 0 , frame_begin, sending_pixels,
-        sample_pixel, pixel_index, oled_data, rgb_cs, rgb_sdin, rgb_sclk, rgb_d_cn, rgb_resn, rgb_vccen,
-        rgb_pmoden);
+        sample_pixel, pixel_index, oled_data, JB[0], JB[1], JB[2], JB[3], JB[4], JB[5], JB[6]);
          
 endmodule
 
