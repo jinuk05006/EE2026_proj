@@ -20,19 +20,15 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module moving_box(
-input state,
+module subtask_d(
+input [3:0] state,
 input clock, 
 input btnC, 
 input btnL, 
 input btnR, 
-output rgb_cs, 
-output rgb_sdin , 
-output rgb_sclk, 
-output rgb_d_cn, 
-output rgb_resn, 
-output rgb_vccen, 
-output rgb_pmoden);
+input [15:0] sw,
+output [6:0]JB,
+output reg [3:0] state_out = 4);
 
     wire clock_6p25mhz;
     wire clock_90hz;
@@ -124,55 +120,106 @@ output rgb_pmoden);
     end    
 
     always @(posedge clock) begin
-        if (btnC == 1) begin
-            btnc_flag <= 1;
-            btnr_flag <= 0;
-            btnl_flag <= 0;
-            left_flag <= 0;
-            right_flag <= 0;
-        end
-        
-        else if (btnR == 1) begin
-            btnc_flag <= 0;
-            btnr_flag <= 1;
-            btnl_flag <= 0;
-            left_flag <= 0;
-        end
-        
-        else if (btnL == 1) begin
-            btnc_flag <= 0;
-            btnr_flag <= 0;
-            btnl_flag <= 1;
-            right_flag <= 0;
-        end
-        
-        else if (btnl_flag == 1 && position == left_edge) begin
-            left_flag <= 1;
-        end
-        
-        else if (btnr_flag == 1 && position == (right_edge - 5)) begin
-            right_flag <= 1;
-        end
-       
-        else begin
+    
+        if (state == 4) begin
+            if (sw[3] == 0 && sw[2] == 1) begin
+                state_out <= 3;
+                end
+            else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 1) begin
+                state_out <= 2;
+                end
+ 
+             else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+                state_out <= 1;
+                end         
+   
+             else if (sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 0) begin
+               state_out <= 0;
+               end     
+                  
+            else begin 
+                state_out <= 4;
+                if (btnC == 1) begin
+                    btnc_flag <= 1;
+                    btnr_flag <= 0;
+                    btnl_flag <= 0;
+                    left_flag <= 0;
+                    right_flag <= 0;
+                end
             
+                else if (btnR == 1) begin
+                    btnc_flag <= 0;
+                    btnr_flag <= 1;
+                    btnl_flag <= 0;
+                    left_flag <= 0;
+                end
+                
+                else if (btnL == 1) begin
+                    btnc_flag <= 0;
+                    btnr_flag <= 0;
+                    btnl_flag <= 1;
+                    right_flag <= 0;
+                end
+            
+                else if (btnl_flag == 1 && position == left_edge) begin
+                    left_flag <= 1;
+                end
+                
+                else if (btnr_flag == 1 && position == (right_edge - 5)) begin
+                    right_flag <= 1;
+                end
+               
+                else begin
+                    
+                end
+        
+            end
         end
     end
+            
+//        if (btnC == 1) begin
+//            btnc_flag <= 1;
+//            btnr_flag <= 0;
+//            btnl_flag <= 0;
+//            left_flag <= 0;
+//            right_flag <= 0;
+//        end
+        
+//        else if (btnR == 1) begin
+//            btnc_flag <= 0;
+//            btnr_flag <= 1;
+//            btnl_flag <= 0;
+//            left_flag <= 0;
+//        end
+        
+//        else if (btnL == 1) begin
+//            btnc_flag <= 0;
+//            btnr_flag <= 0;
+//            btnl_flag <= 1;
+//            right_flag <= 0;
+//        end
+        
+//        else if (btnl_flag == 1 && position == left_edge) begin
+//            left_flag <= 1;
+//        end
+        
+//        else if (btnr_flag == 1 && position == (right_edge - 5)) begin
+//            right_flag <= 1;
+//        end
+       
+//        else begin
+            
+//        end
+//    end
     
-// Oled_Display oled1 (clock_6p25mhz,
-//                       0, 
-//                       frame_begin, 
-//                       sending_pixels,
-//                       sample_pixel, 
-//                       pixel_index, 
-//                       oled_data1, 
-//                       rgb_cs, 
-//                       rgb_sdin, 
-//                       rgb_sclk, 
-//                       rgb_d_cn, 
-//                       rgb_resn, 
-//                       rgb_vccen,
-//                       rgb_pmoden);
+Oled_Display oled1 (clock_6p25mhz,
+                        0, 
+                        frame_begin, 
+                        sending_pixels,
+                        sample_pixel, 
+                        pixel_index, 
+                        oled_data1, 
+                        JB[0],JB[1],JB[2],JB[3],JB[4],JB[5],JB[6]);  
 
     
 endmodule
