@@ -36,8 +36,8 @@ wire [11:0] mouse_press_y;
 wire mr, ml;
 
 reg [5:0] led_status;
-reg [4:0] LD11_15 = 0;
-reg [9:0] LD0_9 = 0;
+reg [5:0] LD10_15 = 0;
+wire [9:0] LD0_9;
 wire [6:0] seg_paint;
 
 clock_divider d1 (clock, 9999999, clock_5hz);
@@ -76,7 +76,7 @@ always @(posedge clock) begin
               
         else begin 
             state_out <= 0;
-            led_status <= {LD11_15, clock_5hz};
+//            led_status <= LD10_15;
             COUNT_VAL <= (COUNT_VAL == 1499997) ? 0 : COUNT_VAL + 1;
             if (COUNT_VAL == 0) begin
                 seg[6:0] <= 7'b1000001;
@@ -93,11 +93,16 @@ always @(posedge clock) begin
                 an[3:0] <= 4'b1101;
                 dp <= 0;
             end
+            if (COUNT_VAL == 1300000) begin
+                seg[6:0] <= seg_paint;
+                an[3:0] <= 4'b1110;
+                dp <= 1;
+            end
         end
     end
 end
 
-paint p1 (clock,left,right,1,xpos,ypos,pixel_index,led[9:0],ml,mr,mouse_press_x,mouse_press_y,seg_paint,oled_data2);
+paint p1 (clock,left,right,1,xpos,ypos,pixel_index,LD0_9,ml,mr,mouse_press_x,mouse_press_y,seg_paint,oled_data2);
 
 Oled_Display oled1 (clock_6p25mhz,
                     0, 
@@ -108,6 +113,6 @@ Oled_Display oled1 (clock_6p25mhz,
                     oled_data2, 
                     JB[0],JB[1],JB[2],JB[3],JB[4],JB[5],JB[6]); 
 
-assign led = {led_status,led[9:0]};
+assign led[9:0] = (clock_5hz == 1)? LD0_9: 0;
 
 endmodule
