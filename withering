@@ -1,0 +1,155 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 11/03/2023 01:07:43 AM
+// Design Name: 
+// Module Name: withering
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module withering(
+    input clock,
+    input btnC,
+    input [5:1] sw,   
+    input tree_height,
+    output [6:0] JB,
+    output [15:0] led
+    );
+
+wire clock_6p25mhz;
+wire clock_90hz;
+wire frame_begin;
+wire sending_pixels;
+wire sample_pixel;
+wire [12:0] pixel_index;
+reg [15:0] oled_data; //change back to reg
+reg [12:0] x_axis;
+reg [12:0] y_axis;
+reg [1:0] count = 0;
+reg initial_step = 1'b0;
+
+reg [1:0] btnc_flag = 0;
+reg [1:0] btnr_flag = 0;
+reg [1:0] btnl_flag = 0;
+
+reg bottom_edge;
+reg bottom_flag;
+reg [31:0] posx;
+reg [31:0] posy;
+reg [2:0] pos_count;
+
+initial begin
+posx = 48;
+posy = 32;
+bottom_flag = 0;
+bottom_edge = 63;
+end
+
+clock_divider d1 (clock, 7 , clock_6p25mhz);
+clock_divider d2 (clock, 555555, clock_90hz); // remember to change back to 45hz
+
+always @(posedge clock_6p25mhz) begin
+if (sw == 0) begin
+x_axis = pixel_index % 12'd96;
+y_axis = pixel_index / 12'd96;
+    
+    if (
+        (x_axis >= posx && x_axis < posx+4 && y_axis==posy+3) || //bottom horizontal
+        (x_axis== posx-3 && y_axis >= posy-3 && y_axis <posy+1) || //bottom vertical
+        (x_axis >= posx-3 && x_axis < posx+1 && y_axis == posy-3) || //top horizontal
+        (x_axis == posx+3 && y_axis>= posy && y_axis < posy+4)|| //top vertical
+        ((x_axis == posx+3 && y_axis == posy) || (x_axis == posx+2 && y_axis == posy-1) || (x_axis == posx+1 && y_axis == posy-2) || (x_axis == posx && y_axis == posy-3)) || // bottom diagonal
+        ((x_axis == posx-3 && y_axis == posy) || (x_axis == posx-2 && y_axis == posy+1) || (x_axis == posx-1 && y_axis == posy+2) || (x_axis == posx && y_axis == posy+3)) || // top diagonal
+        ((x_axis == posx-2 && y_axis == posy-2) || (x_axis == posx-1 && y_axis == posy -1) || (x_axis == posx && y_axis == posy) || (x_axis == posx+1 && y_axis == posy+1) || (x_axis == posx+2 && y_axis == posy+2))) // middle diagonal
+        begin
+        oled_data <= 16'b00000_111111_00000;
+    end
+    
+    else begin
+    oled_data <= 16'b0000000000000000;
+    end
+
+end
+end
+
+always @(posedge clock_90hz) begin
+if (sw == 0) begin
+
+    if (bottom_flag == 0 && posy == 100) begin
+        bottom_flag <= 1; 
+    end
+    
+    if(bottom_flag == 0 && pos_count <5) begin
+        posy <= posy + 1;
+        if(pos_count == 0) begin
+            posx<=40;
+        end
+        if(pos_count == 1) begin
+            posx<=48;
+        end
+        if(pos_count == 2) begin
+            posx<=56;
+        end
+        if(pos_count == 3) begin
+            posx<= 32;
+        end
+        if(pos_count == 4) begin
+            posx <=64;
+        end
+    end 
+    
+    if (pos_count == 5) begin
+        pos_count <= 0;
+        bottom_flag <= 0;
+    end
+    
+    if (bottom_flag == 1) begin
+        pos_count <= pos_count + 1;
+        bottom_flag <= 0;
+        posy<= 32;
+    end
+    
+   
+end
+end
+
+//always @(posedge clock) begin
+//if (sw == 0) begin
+//    if (bottom_flag == 1 && pos_count == 5) begin
+//        pos_count <= 0;
+//        bottom_flag <= 0;
+//    end
+//    if (bottom_flag == 1) begin
+//        pos_count <= pos_count + 1;
+//        bottom_flag <= 0;
+//    end
+    
+//    if (bottom_flag == 0 && posy == bottom_edge) begin
+//        bottom_flag <= 1; 
+//    end
+    
+//end
+
+
+Oled_Display oled1 (clock_6p25mhz,
+                0, 
+                frame_begin, 
+                sending_pixels,
+                sample_pixel, 
+                pixel_index, 
+                oled_data, 
+                JB[0],JB[1],JB[2],JB[3],JB[4],JB[5],JB[6]);  
+endmodule
