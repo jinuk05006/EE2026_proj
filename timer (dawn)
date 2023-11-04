@@ -1,0 +1,1378 @@
+`timescale 1ns / 1ps
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+//  FILL IN THE FOLLOWING INFORMATION:
+//  STUDENT A NAME: 
+//  STUDENT B NAME:
+//  STUDENT C NAME: 
+//  STUDENT D NAME:  
+//
+//////////////////////////////////////////////////////////////////////////////////
+
+// INDIVIDUAL IMPROVEMENT IMPLEMENTATION //
+    
+module Top_Student (inout PS2Clk,
+                    inout PS2Data,
+                    input clock,
+                    input btnC,
+                    input btnL,
+                    input btnR,
+                    input [5:0] sw,
+                    output reg [5:0] led = 6'b000000, 
+                    output [6:0] JB,
+                    output [6:0] seg,
+                    output [3:0] an,
+                    output dp
+        );
+        
+    wire clock_6p25mhz;
+    wire clock_45hz;
+    wire frame_begin;
+    wire sending_pixels;
+    wire sample_pixel;
+    wire [12:0] pixel_index;
+    wire mouse_x_pos;
+    wire mouse_y_pos;
+    reg [15:0] oled_data = 16'h07E0;
+    reg [12:0] x_axis;
+    reg [12:0] y_axis;
+       
+    reg btnc_flag = 0;
+    reg btnr_flag = 0;
+    reg btnl_flag = 0;
+        
+    reg left_edge = 2;
+    reg left_flag = 0;
+    reg right_edge = 94;
+    reg right_flag = 0;
+          
+    clock_divider d1 (clock, 7 , clock_6p25mhz);
+    clock_divider d2 (clock, 1111110, clock_45hz);
+    
+    reg [31:0] COUNT_TIMER = 0;
+    reg [31:0] no_of_seconds = 0;
+    reg start_5th_min = 0;
+    reg start_4th_min = 0;
+    reg start_3rd_min = 0;
+    reg start_2nd_min = 0;
+    reg start_1st_min = 0;
+    reg end_timer = 0;
+    reg power_off = 0; // timer resets, display turns off
+    reg reset_timer = 0; // timer resets, display is still on
+    reg [31:0] timer_state = 59;
+    
+    wire SLOW_CLOCK_10Hz;
+    slowclock_10Hz sc10 (clock, SLOW_CLOCK_10Hz);
+
+    always @ (posedge clock_6p25mhz) begin
+        x_axis = pixel_index % 12'd96;
+        y_axis = pixel_index / 12'd96;
+    
+        // how switch controls timer
+        
+        if (sw[5] == 1 && sw[0] == 1) begin
+            reset_timer = 0;
+            start_5th_min = 1;
+            start_4th_min = 0;
+            start_3rd_min = 0;
+            start_2nd_min = 0;
+            start_1st_min = 0;
+            end_timer = 0;
+            power_off = 0;
+        end
+        
+        if (sw[5] == 0 && sw[4] == 1 && sw[0] == 1) begin
+            reset_timer = 0;
+            start_5th_min = 0;
+            start_4th_min = 1;
+            start_3rd_min = 0;
+            start_2nd_min = 0;
+            start_1st_min = 0;
+            end_timer = 0;
+            power_off = 0;
+        end     
+        
+        if (sw[5] == 0 && sw[4] == 0 && sw[3] == 1 && sw[0] == 1) begin
+            reset_timer = 0;
+            start_5th_min = 0;
+            start_4th_min = 0;
+            start_3rd_min = 1;
+            start_2nd_min = 0;
+            start_1st_min = 0;
+            end_timer = 0;
+            power_off = 0;
+        end           
+        
+        if (sw[5] == 0 && sw[4] == 0 && sw[3] == 0 && sw[2] == 1 && sw[0] == 1) begin
+            reset_timer = 0;
+            start_5th_min = 0;
+            start_4th_min = 0;
+            start_3rd_min = 0;
+            start_2nd_min = 1;
+            start_1st_min = 0;
+            end_timer = 0;
+            power_off = 0;
+        end            
+    
+        if (sw[5] == 0 && sw[4] == 0 && sw[3] == 0 && sw[2] == 0 && sw[1] == 1 && sw[0] == 1) begin
+            reset_timer = 0;
+            start_5th_min = 0;
+            start_4th_min = 0;
+            start_3rd_min = 0;
+            start_2nd_min = 0;
+            start_1st_min = 1;
+            end_timer = 0;
+            power_off = 0;
+        end  
+        
+        if (sw[0] == 0) begin
+            start_5th_min = 0;
+            start_4th_min = 0;
+            start_3rd_min = 0;
+            start_2nd_min = 0;
+            start_1st_min = 0;
+            end_timer = 0;
+            power_off = 1;
+            led[5:0] <= 6'b000000;
+        end          
+        
+        if (sw[5] == 0 && sw[4] == 0 && sw[3] == 0 && sw[2] == 0 && sw[1] == 0 && sw[0] == 1) begin
+            reset_timer = 1;
+            start_5th_min = 0;
+            start_4th_min = 0;
+            start_3rd_min = 0;
+            start_2nd_min = 0;
+            start_1st_min = 0;
+            led[5:0] <= 6'b000001;
+        end
+        
+        // timer starts
+        
+        if (start_5th_min == 1 && end_timer == 0 && power_off == 0) begin
+            led[5:0] <= 6'b100000;
+            no_of_seconds <= no_of_seconds + 1;
+            if (no_of_seconds >= 1875000000) begin
+                end_timer <= 1;
+                led[5:1] <= 5'b00000;
+                led[0] <= SLOW_CLOCK_10Hz;
+            end
+            if (no_of_seconds < 1875000000) begin
+                COUNT_TIMER <= COUNT_TIMER + 1;
+                if (COUNT_TIMER == 375000000) begin               
+                    COUNT_TIMER <= 0;
+                end
+            end
+        end
+                
+        if (start_4th_min == 1 && end_timer == 0 && power_off == 0) begin
+            led[5:0] <= 6'b010000;
+            no_of_seconds <= no_of_seconds + 1;
+            if (no_of_seconds >= 1500000000) begin
+                end_timer <= 1;
+                led[5:1] <= 5'b00000;
+                led[0] <= SLOW_CLOCK_10Hz;
+            end
+            if (no_of_seconds < 1500000000) begin
+                COUNT_TIMER <= COUNT_TIMER + 1;
+                if (COUNT_TIMER == 375000000) begin
+                    COUNT_TIMER <= 0;
+                end
+            end
+        end
+        
+        if (start_3rd_min == 1 && end_timer == 0 && power_off == 0) begin
+            led[5:0] <= 6'b001000;
+            no_of_seconds <= no_of_seconds + 1;
+            if (no_of_seconds >= 1125000000) begin
+                end_timer <= 1;
+                led[5:1] <= 5'b00000;
+                led[0] <= SLOW_CLOCK_10Hz;
+            end
+            if (no_of_seconds < 1125000000) begin
+                COUNT_TIMER <= COUNT_TIMER + 1;
+                if (COUNT_TIMER == 375000000) begin
+                    COUNT_TIMER <= 0;
+                end
+            end
+        end
+               
+        if (start_2nd_min == 1 && end_timer == 0 && power_off == 0) begin
+            led[5:0] <= 6'b000100;
+            no_of_seconds <= no_of_seconds + 1;
+            if (no_of_seconds >= 750000000) begin
+                end_timer <= 1;
+                led[5:1] <= 5'b00000;
+                led[0] <= SLOW_CLOCK_10Hz;
+            end
+            if (no_of_seconds < 750000000) begin
+                COUNT_TIMER <= COUNT_TIMER + 1;
+                if (COUNT_TIMER == 375000000) begin
+                    COUNT_TIMER <= 0;
+                end
+            end
+        end   
+                
+        if (start_1st_min == 1 && end_timer == 0 && power_off == 0) begin
+            led[5:0] <= 6'b000010;
+            no_of_seconds <= no_of_seconds + 1;
+            if (no_of_seconds >= 375000000) begin
+                end_timer <= 1;
+                led[5:1] <= 5'b00000;
+                led[0] <= SLOW_CLOCK_10Hz;
+            end
+            if (no_of_seconds < 375000000) begin
+                COUNT_TIMER <= COUNT_TIMER + 1;
+                if (COUNT_TIMER == 375000000) begin
+                    COUNT_TIMER <= 0;
+                end
+            end
+        end      
+        
+        if (end_timer == 1 && power_off == 0) begin
+            no_of_seconds <= 0;
+            timer_state <= 0;
+            start_5th_min <= 0;
+            start_4th_min <= 0;
+            start_3rd_min <= 0;
+            start_2nd_min <= 0;
+            start_1st_min <= 0; 
+        end   
+        
+        // timer states
+        
+        if (COUNT_TIMER == 0) begin
+            timer_state <= 59;
+        end
+        
+        if (COUNT_TIMER == 6250000) begin
+            timer_state <= 58;
+        end
+        
+        if (COUNT_TIMER == 12500000) begin
+            timer_state <= 57;
+        end
+        
+        if (COUNT_TIMER == 18750000) begin
+            timer_state <= 56;
+        end       
+        
+        if (COUNT_TIMER == 25000000) begin
+            timer_state <= 55;
+        end      
+        
+        if (COUNT_TIMER == 31250000) begin
+            timer_state <= 54;
+        end           
+        
+        if (COUNT_TIMER == 37500000) begin
+            timer_state <= 53;
+        end        
+        
+        if (COUNT_TIMER == 43750000) begin
+            timer_state <= 52;
+        end        
+        
+        if (COUNT_TIMER == 50000000) begin
+            timer_state <= 51;
+        end        
+        
+        if (COUNT_TIMER == 56250000) begin
+            timer_state <= 50;
+        end        
+        
+        if (COUNT_TIMER == 62500000) begin
+            timer_state <= 49;
+        end        
+        
+        if (COUNT_TIMER == 68750000) begin
+            timer_state <= 48;
+        end      
+        
+        if (COUNT_TIMER == 75000000) begin
+            timer_state <= 47;
+        end          
+        
+        if (COUNT_TIMER == 81250000) begin
+            timer_state <= 46;
+        end        
+        
+        if (COUNT_TIMER == 87500000) begin
+            timer_state <= 45;
+        end        
+        
+        if (COUNT_TIMER == 93750000) begin
+            timer_state <= 44;
+        end        
+        
+        if (COUNT_TIMER == 100000000) begin
+            timer_state <= 43;
+        end        
+        
+        if (COUNT_TIMER == 106250000) begin
+            timer_state <= 42;
+        end        
+        
+        if (COUNT_TIMER == 112500000) begin
+            timer_state <= 41;
+        end        
+        
+        if (COUNT_TIMER == 118750000) begin
+            timer_state <= 40;
+        end        
+        
+        if (COUNT_TIMER == 125000000) begin
+            timer_state <= 39;
+        end        
+        
+        if (COUNT_TIMER == 131250000) begin
+            timer_state <= 38;
+        end
+        
+        if (COUNT_TIMER == 137500000) begin
+            timer_state <= 37;
+        end
+        
+        if (COUNT_TIMER == 143750000) begin
+            timer_state <= 36;
+        end
+        
+        if (COUNT_TIMER == 150000000) begin
+            timer_state <= 35;
+        end
+        
+        if (COUNT_TIMER == 156250000) begin
+            timer_state <= 34;
+        end
+        
+        if (COUNT_TIMER == 162500000) begin
+            timer_state <= 33;
+        end
+        
+        if (COUNT_TIMER == 168750000) begin
+            timer_state <= 32;
+        end
+        
+        if (COUNT_TIMER == 175000000) begin
+            timer_state <= 31;
+        end
+        
+        if (COUNT_TIMER == 181250000) begin
+            timer_state <= 30;
+        end
+        
+        if (COUNT_TIMER == 187500000) begin
+            timer_state <= 29;
+        end
+        
+        if (COUNT_TIMER == 193750000) begin
+            timer_state <= 28;
+        end
+        
+        if (COUNT_TIMER == 200000000) begin
+            timer_state <= 27;
+        end
+        
+        if (COUNT_TIMER == 206250000) begin
+            timer_state <= 26;
+        end
+        
+        if (COUNT_TIMER == 212500000) begin
+            timer_state <= 25;
+        end
+        
+        if (COUNT_TIMER == 218750000) begin
+            timer_state <= 24;
+        end
+        
+        if (COUNT_TIMER == 225000000) begin
+            timer_state <= 23;
+        end
+        
+        if (COUNT_TIMER == 231250000) begin
+            timer_state <= 22;
+        end
+        
+        if (COUNT_TIMER == 237500000) begin
+            timer_state <= 21;
+        end
+        
+        if (COUNT_TIMER == 243750000) begin
+            timer_state <= 20;
+        end
+        
+        if (COUNT_TIMER == 250000000) begin
+            timer_state <= 19;
+        end
+        
+        if (COUNT_TIMER == 256250000) begin
+            timer_state <= 18;
+        end
+        
+        if (COUNT_TIMER == 262500000) begin
+            timer_state <= 17;
+        end
+        
+        if (COUNT_TIMER == 268750000) begin
+            timer_state <= 16;
+        end
+        
+        if (COUNT_TIMER == 275000000) begin
+            timer_state <= 15;
+        end
+        
+        if (COUNT_TIMER == 281250000) begin
+            timer_state <= 14;
+        end
+        
+        if (COUNT_TIMER == 287500000) begin
+            timer_state <= 13;
+        end
+        
+        if (COUNT_TIMER == 293750000) begin
+            timer_state <= 12;
+        end
+        
+        if (COUNT_TIMER == 300000000) begin
+            timer_state <= 11;
+        end
+        
+        if (COUNT_TIMER == 306250000) begin
+            timer_state <= 10;
+        end
+        
+        if (COUNT_TIMER == 312500000) begin
+            timer_state <= 9;
+        end
+        
+        if (COUNT_TIMER == 318750000) begin
+            timer_state <= 8;
+        end
+        
+        if (COUNT_TIMER == 325000000) begin
+            timer_state <= 7;
+        end
+        
+        if (COUNT_TIMER == 331250000) begin
+            timer_state <= 6;
+        end
+        
+        if (COUNT_TIMER == 337500000) begin
+            timer_state <= 5;
+        end
+        
+        if (COUNT_TIMER == 343750000) begin
+            timer_state <= 4;
+        end
+        
+        if (COUNT_TIMER == 350000000) begin
+            timer_state <= 3;
+        end
+        
+        if (COUNT_TIMER == 356250000) begin
+            timer_state <= 2;
+        end
+        
+        if (COUNT_TIMER == 362500000) begin
+            timer_state <= 1;
+        end
+        
+        if (COUNT_TIMER == 368750000) begin
+            timer_state <= 0;
+        end
+        
+        // countdown shows 59 (1 second has passed)
+        if ((timer_state == 59)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        else begin
+            oled_data <= 16'b00000_000000_00000;
+        end
+        
+        // countdown shows 58 (2 seconds have passed)
+        if ((timer_state == 58)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        
+        // countdown shows 57 (3 seconds have passed)
+        if ((timer_state == 57)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end    
+             
+        // countdown shows 56 (4 seconds have passed)
+        if ((timer_state == 56)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        
+        // countdown shows 55 (5 seconds have passed)
+        if ((timer_state == 55)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 54 (6 seconds have passed)
+        if ((timer_state == 54)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end      
+        
+        // countdown shows 53 (7 seconds have passed)
+        if ((timer_state == 53)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+               
+        // countdown shows 52 (8 seconds have passed)
+        if ((timer_state == 52)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+         
+        // countdown shows 51 (9 seconds have passed)
+        if ((timer_state == 51)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        
+        // countdown shows 50 (10 seconds have passed)
+        if ((timer_state == 50)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+               
+        // countdown shows 49 (11 seconds have passed)
+        if ((timer_state == 49)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        
+        // countdown shows 48 (12 seconds have passed)
+        if ((timer_state == 48)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 47 (13 seconds have passed)
+        if ((timer_state == 47)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+       
+        // countdown shows 46 (14 seconds have passed)
+        if ((timer_state == 46)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 45 (15 seconds have passed)
+        if ((timer_state == 45)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 44 (16 seconds have passed)
+        if ((timer_state == 44)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end          
+        
+        // countdown shows 43 (17 seconds have passed)
+        if ((timer_state == 43)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end             
+        
+        // countdown shows 42 (18 seconds have passed)
+        if ((timer_state == 42)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end            
+        
+        // countdown shows 41 (19 seconds have passed)
+        if ((timer_state == 41)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 40 (20 seconds have passed)
+        if ((timer_state == 40)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15) // 1st number
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end     
+
+        // countdown shows 39 (21 seconds have passed)
+        if ((timer_state == 39)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end         
+        
+        // countdown shows 38 (22 seconds have passed)
+        if ((timer_state == 38)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 37 (23 seconds have passed)
+        if ((timer_state == 37)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end           
+        
+        // countdown shows 36 (24 seconds have passed)
+        if ((timer_state == 36)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 35 (25 seconds have passed)
+        if ((timer_state == 35)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end         
+        
+        // countdown shows 34 (26 seconds have passed)
+        if ((timer_state == 34)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end      
+        
+        // countdown shows 33 (27 seconds have passed)
+        if ((timer_state == 33)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 32 (28 seconds have passed)
+        if ((timer_state == 32)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end      
+        
+        // countdown shows 31 (29 seconds have passed)
+        if ((timer_state == 31)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end   
+        
+        // countdown shows 30 (30 seconds have passed)
+        if ((timer_state == 30)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end     
+        
+        // countdown shows 29 (31 seconds have passed)
+        if ((timer_state == 29)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end           
+        
+        // countdown shows 28 (32 seconds have passed)
+        if ((timer_state == 28)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end      
+
+        // countdown shows 27 (33 seconds have passed)
+        if ((timer_state == 27)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 26 (34 seconds have passed)
+        if ((timer_state == 26)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end          
+        
+        // countdown shows 25 (35 seconds have passed)
+        if ((timer_state == 25)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end         
+        
+        // countdown shows 24 (36 seconds have passed)
+        if ((timer_state == 24)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end            
+        
+        // countdown shows 23 (37 seconds have passed)
+        if ((timer_state == 23)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 22 (38 seconds have passed)
+        if ((timer_state == 22)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end         
+        
+        // countdown shows 21 (39 seconds have passed)
+        if ((timer_state == 21)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 20 (40 seconds have passed)
+        if ((timer_state == 20)
+        & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end    
+
+        // countdown shows 19 (41 seconds have passed)
+        if ((timer_state == 19)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end                                                                                                                                                                             
+                    
+        // countdown shows 18 (42 seconds have passed)
+        if ((timer_state == 18)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 17 (43 seconds have passed)
+        if ((timer_state == 17)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end       
+        
+        // countdown shows 16 (44 seconds have passed)
+        if ((timer_state == 16)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end        
+        
+        // countdown shows 15 (45 seconds have passed)
+        if ((timer_state == 15)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end      
+        
+        // countdown shows 14 (46 seconds have passed)
+        if ((timer_state == 14)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end         
+        
+        // countdown shows 13 (47 seconds have passed)
+        if ((timer_state == 13)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end           
+        
+        // countdown shows 12 (48 seconds have passed)
+        if ((timer_state == 12)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end           
+        
+        // countdown shows 11 (49 seconds have passed)
+        if ((timer_state == 11)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end     
+        
+        // countdown shows 10 (50 seconds have passed)
+        if ((timer_state == 10)
+        & ((x_axis >= 46 && x_axis < 48 && y_axis >= 4 && y_axis < 23) // 1st number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end     
+                                
+       // countdown shows 09 (51 seconds have passed)
+       if ((timer_state == 9)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+
+       // countdown shows 08 (52 seconds have passed)
+       if ((timer_state == 8)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 07 (53 seconds have passed)
+       if ((timer_state == 7)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 24)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 06 (54 seconds have passed)
+       if ((timer_state == 6)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 05 (55 seconds have passed)
+       if ((timer_state == 5)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 04 (56 seconds have passed)
+       if ((timer_state == 4)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15) // 2nd number
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 4 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 24)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 03 (57 seconds have passed)
+       if ((timer_state == 3)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+       
+       // countdown shows 02 (58 seconds have passed)
+       if ((timer_state == 2)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+       | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 13 && y_axis < 15)
+       | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+       | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 13)
+       | (x_axis >= 49 && x_axis < 51 && y_axis >= 14 && y_axis < 22)))
+       begin
+           oled_data <= 16'b11111_111111_11111;
+       end   
+              
+        // countdown shows 01 (59 seconds have passed)
+        if ((timer_state == 1)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 4 && y_axis < 23))) // 2nd number
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end   
+                       
+        // countdown shows 00 (60 seconds have passed)
+        if ((timer_state == 0)
+       & ((x_axis >= 37 && x_axis < 47 && y_axis >= 4 && y_axis < 6) // 1st number
+        | (x_axis >= 37 && x_axis < 47 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 37 && x_axis < 39 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 46 && x_axis < 48 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 4 && y_axis < 6) // 2nd number
+        | (x_axis >= 49 && x_axis < 59 && y_axis >= 22 && y_axis < 24)
+        | (x_axis >= 49 && x_axis < 51 && y_axis >= 5 && y_axis < 22)
+        | (x_axis >= 58 && x_axis < 60 && y_axis >= 5 && y_axis < 22)))
+        begin
+            oled_data <= 16'b11111_111111_11111;
+        end
+        
+        // power off
+        if (power_off == 1) begin
+            no_of_seconds <= 0;
+            COUNT_TIMER <= 0;
+            oled_data <= 16'b00000_000000_00000;
+        end
+        
+        // reset timer
+        if (reset_timer == 1) begin
+            no_of_seconds <= 0;
+            COUNT_TIMER <= 0;
+            oled_data <= 16'b00000_000000_00000;
+        end
+            
+    end
+
+
+    Oled_Display oled1 (clock_6p25mhz, 0 , frame_begin, sending_pixels,
+        sample_pixel, pixel_index, oled_data, JB[0], JB[1], JB[2], JB[3], JB[4], JB[5],
+        JB[6]);
+         
+endmodule
