@@ -31,6 +31,7 @@ module withering(
 
 wire clock_6p25mhz;
 wire clock_90hz;
+wire clock_1hz;
 wire frame_begin;
 wire sending_pixels;
 wire sample_pixel;
@@ -38,56 +39,268 @@ wire [12:0] pixel_index;
 reg [15:0] oled_data; //change back to reg
 reg [12:0] x_axis;
 reg [12:0] y_axis;
-reg [1:0] count = 0;
-reg initial_step = 1'b0;
+reg [31:0] count;
+reg [31:0] count2;
+reg [31:0] count3;
+reg [31:0] count4;
 
-reg [1:0] btnc_flag = 0;
-reg [1:0] btnr_flag = 0;
-reg [1:0] btnl_flag = 0;
-
-reg bottom_edge;
-reg bottom_flag;
+reg [31:0] bottom_edge;
+reg [1:0] bottom_flag;
 reg [31:0] posx;
 reg [31:0] posy;
 reg [2:0] pos_count;
+reg [1:0] end_flag;
 
 initial begin
 posx = 48;
 posy = 32;
 bottom_flag = 0;
 bottom_edge = 63;
+count = 0;
+pos_count = 0;
+end_flag = 0;
 end
 
 clock_divider d1 (clock, 7 , clock_6p25mhz);
 clock_divider d2 (clock, 555555, clock_90hz); // remember to change back to 45hz
+clock_divider d3 (clock,49999999 ,clock_1hz);
 
 always @(posedge clock_6p25mhz) begin
 if (sw == 0) begin
 x_axis = pixel_index % 12'd96;
 y_axis = pixel_index / 12'd96;
+if (count < 10) begin
     
-    if (
-        (x_axis >= posx && x_axis < posx+4 && y_axis==posy+3) || //bottom horizontal
+    if (((x_axis >= posx && x_axis < posx+4 && y_axis==posy+3) || //bottom horizontal
         (x_axis== posx-3 && y_axis >= posy-3 && y_axis <posy+1) || //bottom vertical
         (x_axis >= posx-3 && x_axis < posx+1 && y_axis == posy-3) || //top horizontal
         (x_axis == posx+3 && y_axis>= posy && y_axis < posy+4)|| //top vertical
         ((x_axis == posx+3 && y_axis == posy) || (x_axis == posx+2 && y_axis == posy-1) || (x_axis == posx+1 && y_axis == posy-2) || (x_axis == posx && y_axis == posy-3)) || // bottom diagonal
         ((x_axis == posx-3 && y_axis == posy) || (x_axis == posx-2 && y_axis == posy+1) || (x_axis == posx-1 && y_axis == posy+2) || (x_axis == posx && y_axis == posy+3)) || // top diagonal
-        ((x_axis == posx-2 && y_axis == posy-2) || (x_axis == posx-1 && y_axis == posy -1) || (x_axis == posx && y_axis == posy) || (x_axis == posx+1 && y_axis == posy+1) || (x_axis == posx+2 && y_axis == posy+2))) // middle diagonal
-        begin
+        ((x_axis == posx-2 && y_axis == posy-2) || (x_axis == posx-1 && y_axis == posy -1) || (x_axis == posx && y_axis == posy) || (x_axis == posx+1 && y_axis == posy+1) || (x_axis == posx+2 && y_axis == posy+2))) //middle diagonal
+        )begin        
         oled_data <= 16'b00000_111111_00000;
-    end
+        end  
+ 
+//    //B
+//    (((x_axis>=5-3 && x_axis<5+3 && (y_axis == 16 || y_axis == 16+5)) || //middle and bottom horizontal
+//    (x_axis == 5-3 && y_axis >= 16-5 && y_axis < 16+5) || //vertical left
+//    (x_axis == 5+3 && y_axis >= 16 && y_axis <16+5) ||  //vertical bottom right
+//    (x_axis>=5-3 && x_axis<5+2 && y_axis == 16-5) || //top horizontal
+//    (x_axis == 5+1 && y_axis >=16-5 && y_axis <16)) //vertical top right
+//    ||
+//    //E
+//    ((x_axis>=13-3 && x_axis<13+3 && (y_axis == 16 || y_axis == 16 +3 || y_axis == 16 +5)) || //horizontal top middle bottom
+//    (x_axis == 13-3 && y_axis>= 16 && y_axis < 16+5)|| //vertical left
+//    (x_axis == 13+3 && y_axis >= 16 && y_axis<16+3)) // vertical right
+//    ||
+//    //T
+//    ((x_axis>=21-3 && x_axis<21+3 && y_axis==16)||
+//    (x_axis==21 && y_axis>=16-5 && y_axis<16+5) ||
+//    (x_axis>=21 && x_axis<21+3 && y_axis==16+5))
+//    ||
+//    //T
+//    ((x_axis>=29-3 && x_axis<29+3 && y_axis==16)||
+//    (x_axis==29 && y_axis>=16-5 && y_axis<16+5) ||
+//    (x_axis>=29 && x_axis<29+3 && y_axis==16+5))
+//    //E
+//    ||
+//    ((x_axis>=37-3 && x_axis<37+3 && (y_axis == 16 || y_axis == 16 +3 || y_axis == 16 +5)) || //horizontal top middle bottom
+//    (x_axis == 37-3 && y_axis>= 16 && y_axis < 16+5)|| //vertical left
+//    (x_axis == 37+3 && y_axis >= 16 && y_axis<16+3)) // vertical right
+//    //R
+//    ||
+//    ((x_axis==45-3 && y_axis>=16 && y_axis<16+5) || //vertical
+//    (x_axis>=45-3 && x_axis<45+3 && y_axis==16+1)) //horizontal
+//    //L
+//    ||
+//    ((x_axis==63-3 && y_axis>=16-5 && y_axis<16+5) ||
+//    (x_axis>=63-3 && x_axis<63+3 && y_axis==16+5))
+//    //U
+//    ||
+//    (((x_axis==71-3 || x_axis== 71+3)&& y_axis>=16 && y_axis<16+5)|| 
+//    (x_axis>=71-3 && x_axis<71+3 && y_axis == 16+5))
+//    //C
+//    ||
+//    ((x_axis==79-3 && y_axis>= 16 && y_axis< 16+5) || //left vertical
+//    (x_axis>= 79-3 && x_axis< 79+3 && (y_axis== 16+5 || y_axis == 16))) //horizontal
+//    //K
+//    ||
+//    ((x_axis==87-3 && y_axis>= 16-5 && y_axis<16+5)|| 
+//    (x_axis>=87-3 && x_axis<87+3 && (y_axis==16+1 || y_axis== 16-1)) ||     
+//    (x_axis ==87+3 && y_axis >=16+1 && y_axis<16+5))
+//    //N
+//    ||
+//    (((x_axis==16-3 || x_axis== 16+3)&& y_axis>=48 && y_axis<48+5)|| 
+//    (x_axis>=16-3 && x_axis<16+3 && y_axis == 48))
+//    //E
+//    ||
+//    ((x_axis>=24-3 && x_axis<24+3 && (y_axis == 48 || y_axis == 48 +3 || y_axis == 48 +5)) || //horizontal top middle bottom
+//    (x_axis == 24-3 && y_axis>= 48 && y_axis < 48+5)|| //vertical left
+//    (x_axis == 24+3 && y_axis >= 48 && y_axis<48+3)) // vertical right
+//    //X
+//    ||
+//    ((x_axis==32 && y_axis==50) || 
+//    (x_axis==33 && (y_axis==51 || y_axis ==49)) || 
+//    (x_axis==34 && (y_axis==52 || y_axis ==48)) ||
+//    (x_axis==35 && (y_axis==53 || y_axis ==47)) ||
+//    (x_axis==31 && (y_axis==51 || y_axis ==49)) || 
+//    (x_axis==30 && (y_axis==52 || y_axis ==48)) ||
+//    (x_axis==29 && (y_axis==53 || y_axis ==47)) )
+//    //T
+//    ||
+//    ((x_axis>=40-3 && x_axis<40+3 && y_axis==48)||
+//    (x_axis==40 && y_axis>=48-5 && y_axis<48+5) ||
+//    (x_axis>=40 && x_axis<40+3 && y_axis==48+5))
+//    //T
+//    ||
+//    ((x_axis>=56-3 && x_axis<56+3 && y_axis==48)||
+//    (x_axis==56 && y_axis>=48-5 && y_axis<48+5) ||
+//    (x_axis>=56 && x_axis<56+3 && y_axis==48+5))
+//    //I
+//    ||
+//    ((x_axis==64 && ((y_axis>= 48 && y_axis<48+5)|| (y_axis>= 48-3 && y_axis<48-1) )))
+//    //M
+//    ||
+//    (((x_axis==72-3 || x_axis== 72+3 || x_axis==72)&& y_axis>=48 && y_axis<48+5)||  
+//    (x_axis>=72-3 && x_axis<72+3 && y_axis == 48))
+//    //E
+//    ||
+//    ((x_axis>=80-3 && x_axis<80+3 && (y_axis == 48 || y_axis == 48 +3 || y_axis == 48 +5)) || //horizontal top middle bottom
+//    (x_axis == 80-3 && y_axis>= 48 && y_axis < 48+5)|| //vertical left
+//    (x_axis == 80+3 && y_axis >= 48 && y_axis<48+3)) // vertical right
+//    //!
+//    ||
+//    (x_axis == 86 && ((y_axis>= 48-5 && y_axis<48+2) || (y_axis>= 48+3 && y_axis<48+5))))
+//    ) begin
+//        oled_data <= 16'b11111_111111_11111;  
+//    end
+    
+//    if (count < 10 & (
+//        ((x_axis >= posx && x_axis < posx+4 && y_axis==posy+3) || //bottom horizontal
+//        (x_axis== posx-3 && y_axis >= posy-3 && y_axis <posy+1) || //bottom vertical
+//        (x_axis >= posx-3 && x_axis < posx+1 && y_axis == posy-3) || //top horizontal
+//        (x_axis == posx+3 && y_axis>= posy && y_axis < posy+4)|| //top vertical
+//        ((x_axis == posx+3 && y_axis == posy) || (x_axis == posx+2 && y_axis == posy-1) || (x_axis == posx+1 && y_axis == posy-2) || (x_axis == posx && y_axis == posy-3)) || // bottom diagonal
+//        ((x_axis == posx-3 && y_axis == posy) || (x_axis == posx-2 && y_axis == posy+1) || (x_axis == posx-1 && y_axis == posy+2) || (x_axis == posx && y_axis == posy+3)) || // top diagonal
+//        ((x_axis == posx-2 && y_axis == posy-2) || (x_axis == posx-1 && y_axis == posy -1) || (x_axis == posx && y_axis == posy) || (x_axis == posx+1 && y_axis == posy+1) || (x_axis == posx+2 && y_axis == posy+2))) // middle diagonal
+//        ))begin
+//        oled_data <= 16'b00000_111111_00000;
+//    end
     
     else begin
-    oled_data <= 16'b0000000000000000;
+        oled_data <= 16'b0000000000000000;
+    end
+    end
+    
+    if (count == 10) begin
+    if 
+    //B
+    (((x_axis>=posx-46 && x_axis<posx-40 && (y_axis == posy-16 || y_axis == posy-11)) || //middle and bottom horizontal
+    (x_axis == posx-46 && y_axis >= posy-21 && y_axis < posy-11) || //vertical left
+    (x_axis == posx-40 && y_axis >= posy-16 && y_axis <posy-11) ||  //vertical bottom right
+    (x_axis>=posx-46 && x_axis<posx-41 && y_axis == posy-21) || //top horizontal
+    (x_axis == posx-42 && y_axis >=posy-21 && y_axis <posy-16)) //vertical top right
+    ||
+    //E
+    ((x_axis>=posx-38 && x_axis<posx-32 && (y_axis == posy-16 || y_axis == posy-13 || y_axis == posy-11)) || //horizontal top middle bottom
+    (x_axis == posx-38 && y_axis>= posy-16 && y_axis < posy-11)|| //vertical left
+    (x_axis == posx-32 && y_axis >= posy-16 && y_axis<posy-13)) // vertical right
+    ||
+    //T
+    ((x_axis>=posx-30 && x_axis<posx-24 && y_axis==posy-16)||
+    (x_axis==posx-27 && y_axis>=posy-21 && y_axis<posy-11) ||
+    (x_axis>=posx-27 && x_axis<posx-24 && y_axis==posy-11))
+    ||
+    //T
+    ((x_axis>=posx-22 && x_axis<posx-16 && y_axis==posy-16)||
+    (x_axis==posx-19 && y_axis>=posy-21 && y_axis<posy-11) ||
+    (x_axis>=posx-19 && x_axis<posx-16 && y_axis==posy-11))
+    //E
+    ||
+    ((x_axis>=posx-14 && x_axis<posx-8 && (y_axis == posy-16 || y_axis == posy-13 || y_axis == posy-11)) || //horizontal top middle bottom
+    (x_axis == posx-14 && y_axis>= posy-16 && y_axis < posy-11)|| //vertical left
+    (x_axis == posx-8 && y_axis >= posy-16 && y_axis<posy-13)) // vertical right
+    //R
+    ||
+    ((x_axis==posx-6 && y_axis>=posy-16 && y_axis<posy-11) || //vertical
+    (x_axis>=posx-6 && x_axis<posx && y_axis==posy-15)) //horizontal
+    //L
+    ||
+    ((x_axis==posx+12 && y_axis>=posy-21 && y_axis<posy-11) ||
+    (x_axis>=posx+12 && x_axis<posx+18 && y_axis==posy-11))
+    //U
+    ||
+    (((x_axis==posx+20 || x_axis== posx+26)&& y_axis>=posy-16 && y_axis<posy-11)|| 
+    (x_axis>=posx+20 && x_axis<posx+26 && y_axis == posy-11))
+    //C
+    ||
+    ((x_axis==posx+28 && y_axis>= posy-16 && y_axis< posy-11) || //left vertical
+    (x_axis>= posx+28 && x_axis< posx+34 && (y_axis== posy-11 || y_axis == posy-16))) //horizontal
+    //K
+    ||
+    ((x_axis==posx+36 && y_axis>= posy-21 && y_axis<posy-11)|| 
+    (x_axis>=posx+36 && x_axis<posx+42 && (y_axis==posy-15 || y_axis== posy-17)) ||     
+    (x_axis ==posx+42 && y_axis >=posy-15 && y_axis<posy-11))
+    //N
+    ||
+    (((x_axis==posx-35 || x_axis== posx-29)&& y_axis>=posy + 16 && y_axis<posy + 21)|| 
+    (x_axis>=posx-35 && x_axis<posx-29 && y_axis == posy + 16))
+    //E
+    ||
+    ((x_axis>=posx-27 && x_axis<posx-21 && (y_axis == posy + 16 || y_axis == posy + 19 || y_axis == posy + 21)) || //horizontal top middle bottom
+    (x_axis == posx-27 && y_axis>= posy + 16 && y_axis < posy + 21)|| //vertical left
+    (x_axis == posx-21 && y_axis >= posy + 16 && y_axis<posy + 19)) // vertical right
+    //X
+    ||
+    ((x_axis==posx-16 && y_axis==posy + 18) || 
+    (x_axis==posx-15 && (y_axis==posy + 19 || y_axis ==posy + 17)) || 
+    (x_axis==posx-14 && (y_axis==posy + 20 || y_axis ==posy + 16)) ||
+    (x_axis==posx-13 && (y_axis==posy + 21 || y_axis ==posy + 15)) ||
+    (x_axis==posx-17 && (y_axis==posy + 19 || y_axis ==posy + 17)) || 
+    (x_axis==posx-18 && (y_axis==posy + 20 || y_axis ==posy + 16)) ||
+    (x_axis==posx-19 && (y_axis==posy + 21 || y_axis ==posy + 15)) )
+    //T
+    ||
+    ((x_axis>=posx-11 && x_axis<posx-5 && y_axis==posy + 16)||
+    (x_axis==posx-8 && y_axis>=posy + 11 && y_axis<posy + 21) ||
+    (x_axis>=posx-8 && x_axis<posx-5 && y_axis==posy + 21))
+    //T
+    ||
+    ((x_axis>=posx+5 && x_axis<posx+11 && y_axis==posy + 16)||
+    (x_axis==posx+8 && y_axis>=posy + 11 && y_axis<posy + 21) ||
+    (x_axis>=posx+8 && x_axis<posx+11 && y_axis==posy + 21))
+    //I
+    ||
+    ((x_axis==posx+16 && ((y_axis>= posy + 16 && y_axis<posy + 21)|| (y_axis>= posy + 13 && y_axis<posy + 15) )))
+    //M
+    ||
+    (((x_axis==posx+21 || x_axis== posx+27 || x_axis==posx+24)&& y_axis>=posy + 16 && y_axis<posy + 21)||  
+    (x_axis>=posx+21 && x_axis<posx+27 && y_axis == posy + 16))
+    //E
+    ||
+    ((x_axis>=posx + 29 && x_axis<posx+35 && (y_axis == posy + 16 || y_axis == posy + 19 || y_axis == posy + 21)) || //horizontal top middle bottom
+    (x_axis == posx + 29 && y_axis>= posy + 16 && y_axis < posy + 21)|| //vertical left
+    (x_axis == posx+35 && y_axis >= posy + 16 && y_axis<posy + 19)) // vertical right
+    //!
+    ||
+    (x_axis == posx+38 && ((y_axis>= posy + 11 && y_axis<posy + 18) || (y_axis>= posy + 19 && y_axis<posy + 21))))
+     begin
+        oled_data <= 16'b11111_111111_11111;  
     end
 
+else begin
+    oled_data <= 16'b0000000000000000;
+end
+end
+    
+   
 end
 end
 
 always @(posedge clock_90hz) begin
 if (sw == 0) begin
-
+    if(count<10) begin
     if (bottom_flag == 0 && posy == 100) begin
         bottom_flag <= 1; 
     end
@@ -120,29 +333,27 @@ if (sw == 0) begin
         pos_count <= pos_count + 1;
         bottom_flag <= 0;
         posy<= 32;
+    end  
     end
     
-   
+    if(count == 10)begin
+        posx <= 48;
+        posy <= 32;
+    end
 end
 end
 
-//always @(posedge clock) begin
-//if (sw == 0) begin
-//    if (bottom_flag == 1 && pos_count == 5) begin
-//        pos_count <= 0;
-//        bottom_flag <= 0;
-//    end
-//    if (bottom_flag == 1) begin
-//        pos_count <= pos_count + 1;
-//        bottom_flag <= 0;
-//    end
-    
-//    if (bottom_flag == 0 && posy == bottom_edge) begin
-//        bottom_flag <= 1; 
-//    end
-    
-//end
-
+always @(posedge clock_1hz) begin
+if(sw == 0 && count <10) begin
+    count = count + 1;
+end
+if (sw != 0 && count <10) begin
+    count <= 0;
+end
+else begin
+    count <= count;
+end
+end
 
 Oled_Display oled1 (clock_6p25mhz,
                 0, 
