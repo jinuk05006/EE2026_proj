@@ -1,0 +1,221 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 11/02/2023 01:56:08 PM
+// Design Name: 
+// Module Name: proggy
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module cactus([6:0] X, [5:0] Y, input CLK_1HZ,
+    output reg [2:0] MODE = 0, output reg [15:0] MENU_COLOR = 0
+    );
+    
+    parameter [15:0] WHITE  = 16'hFFFF;
+    parameter [15:0] GREEN  = 16'h07E0;
+    parameter [15:0] YELLOW = 16'hFFE0;
+    parameter [15:0] RED    = 16'hF800;
+    parameter [15:0] BLACK  = 16'h0000;
+    parameter [15:0] BLUE   = 16'h039C;
+    parameter [15:0] PURPLE = 16'hD198;
+    parameter [15:0] ORANGE = 16'hFBE0;
+    parameter [15:0] CYAN   = 16'h07FD;
+    parameter [15:0] PINK   = 16'hFC9C;
+      
+    reg [15:0] MENULED = 16'b1010101010101010;
+    reg [2:0] SELECT = 0;
+
+
+    reg [2:0] FRAME1 = 0;
+      
+//    always @ (posedge CLK_DEBOUNCE)begin
+//          if(RIGHT && (SELECT == 0 || SELECT == 2))
+//             SELECT <= SELECT + 1;
+             
+//          else if(LEFT && (SELECT == 1 || SELECT == 3))
+//             SELECT <= SELECT - 1;
+             
+//          else if(DOWN && (SELECT == 0 || SELECT == 1))
+//             SELECT <= SELECT + 2;
+             
+//          else if(UP && (SELECT == 2 || SELECT == 3))
+//             SELECT <= SELECT - 2;
+             
+//          else if(MID && (SELECT == 0)) begin
+//             SELECT <= 5;
+//             MODE <= 1;
+//          end
+          
+//          else if(MID && (SELECT == 1)) begin
+//             SELECT <= 5;
+//             MODE <= 2;
+//          end
+          
+//          else if(MID && (SELECT == 2)) begin
+//             SELECT <= 5;
+//             MODE <= 3;
+//          end
+          
+//          else if(MID && (SELECT == 3)) begin
+//             SELECT <= 5;
+//             MODE <= 4;
+//          end
+          
+//          else if(UP && (SELECT == 5)) begin
+//             SELECT <= 0;
+//             MODE <= 0;
+//          end
+          
+//          end
+      
+    
+ 
+    
+    always @ (posedge CLK_1HZ) begin
+       FRAME1 <= (FRAME1==4) ? 0 : FRAME1+1;
+      
+//    
+    end 
+          
+    
+    always @ (X or Y)
+     begin
+//              
+
+        case(FRAME1)
+      3'b000: begin
+      if (FRAME1 == 0) MENU_COLOR <= BLACK;
+      end
+        
+      3'b001: begin
+      //stem1
+      if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+      else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+      else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+      else MENU_COLOR <= BLACK;
+      end
+      
+      //stem2
+      3'b010: begin
+      if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+            else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+            else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+            else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+            else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+            else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+       else MENU_COLOR <= BLACK;
+     end
+     
+     //stem3
+     3'b011: begin
+      if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 57 && X < 60) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 60 && X < 63) && (Y > 48 && Y <64)) MENU_COLOR <= GREEN;
+                 else if ((X > 63 && X < 66) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+     else MENU_COLOR <= BLACK;
+     
+     end        
+     
+     //petal1
+//     3'b011: begin
+//      if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 57 && X < 60) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 60 && X < 63) && (Y > 48 && Y <64)) MENU_COLOR <= GREEN;
+//                     else if ((X > 63 && X < 66) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//   else if ((X > 42 && X < 45) && (Y > 45 && Y <48)) MENU_COLOR <= WHITE;
+////    else if ((X > 43 && X < 44) && (Y > 46 && Y <47)) MENU_COLOR <= YELLOW;
+//     else MENU_COLOR <= BLACK;
+//     end
+     
+//     //petal2
+//     3'b100: begin
+//     if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 57 && X < 60) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 60 && X < 63) && (Y > 48 && Y <64)) MENU_COLOR <= GREEN;
+//                          else if ((X > 63 && X < 66) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//          else if ((X > 42 && X < 45) && (Y > 45 && Y <48)) MENU_COLOR <= WHITE;
+////         else if ((X > 43 && X < 44) && (Y > 46 && Y <47)) MENU_COLOR <= YELLOW;
+//     else if ((X > 51 && X < 54) && (Y > 39 && Y <42)) MENU_COLOR <= WHITE;
+////         else if ((X > 52 && X < 53) && (Y > 40 && Y <41)) MENU_COLOR <= YELLOW;
+          
+//     else MENU_COLOR <= BLACK;
+//     end
+     
+//     //petal3
+//     3'b101: begin
+//     if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 57 && X < 60) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 60 && X < 63) && (Y > 48 && Y <64)) MENU_COLOR <= GREEN;
+//                               else if ((X > 63 && X < 66) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//              else if ((X > 42 && X < 45) && (Y > 45 && Y <48)) MENU_COLOR <= WHITE;
+////              else if ((X > 43 && X < 44) && (Y > 46 && Y <47)) MENU_COLOR <= YELLOW;
+//         else if ((X > 51 && X < 54) && (Y > 39 && Y <42)) MENU_COLOR <= WHITE;
+////              else if ((X > 52 && X < 53) && (Y > 40 && Y <41)) MENU_COLOR <= YELLOW;
+//  else  if ((X > 57 && X < 60) && (Y > 57 && Y <60)) MENU_COLOR <= WHITE;
+////         else if ((X > 58 && X < 59) && (Y > 58 && Y <59)) MENU_COLOR <= YELLOW;
+//     else MENU_COLOR <= BLACK;
+//     end
+     
+//     //petal4
+//     3'b110: begin
+//     if ((X > 39 && X < 42) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 42 && X < 45) && (Y > 42 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 45 && X < 48) && (Y > 45 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 48 && X < 51) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 51 && X < 54) && (Y > 28 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 54 && X < 57) && (Y > 31 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 57 && X < 60) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 60 && X < 63) && (Y > 48 && Y <64)) MENU_COLOR <= GREEN;
+//                                    else if ((X > 63 && X < 66) && (Y > 51 && Y <64)) MENU_COLOR <= GREEN;
+//                   else if ((X > 42 && X < 45) && (Y > 45 && Y <48)) MENU_COLOR <= WHITE;
+////                   else if ((X > 43 && X < 44) && (Y > 46 && Y <47)) MENU_COLOR <= YELLOW;
+//              else if ((X > 51 && X < 54) && (Y > 39 && Y <42)) MENU_COLOR <= WHITE;
+////                   else if ((X > 52 && X < 53) && (Y > 40 && Y <41)) MENU_COLOR <= YELLOW;
+//       else  if ((X > 57 && X < 60) && (Y > 57 && Y <60)) MENU_COLOR <= WHITE;
+////              else if ((X > 58 && X < 59) && (Y > 58 && Y <59)) MENU_COLOR <= YELLOW;
+//     else if ((X > 54 && X < 57) && (Y > 33 && Y <36)) MENU_COLOR <= WHITE;
+////         else if ((X > 55 && X < 56) && (Y > 34 && Y <35)) MENU_COLOR <= YELLOW;
+     
+//                           else MENU_COLOR <= BLACK;
+//     end 
+
+
+//           
+//     
+            endcase
+     end
+//    
+endmodule
